@@ -104,6 +104,7 @@ class Atom:
     def __init__(self, mName, mPos) -> None:
         self.mName = mName
         self.mPos = mPos 
+        self.mPeriod = self.__DeterminePeriod()
         self.mCoreFod = []
         self.mValenceFod = []
         self.mfods = []
@@ -111,6 +112,12 @@ class Atom:
     
     def SetBond(self, atom2):
         self.mBondTo = atom2
+    
+    def __DeterminePeriod():
+        pass
+
+    def __DetermineGroup():
+        pass
 
 class FOD:
     def __init__(self, parent, mPos = [0.0, 0.0, 0.0] ) -> None:
