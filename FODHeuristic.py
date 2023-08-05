@@ -4,11 +4,27 @@
 from numpy import array, dot, cross
 from numpy.linalg import inv, det
 from scipy.spatial.transform import Rotation
+import csv
 
 #RDKit for BondPrediction
 from rdkit import Chem
 from rdkit.Chem import rdDetermineBonds
 from rdkit.Chem import AllChem
+
+class SourceData:
+    def __init__(self):
+        self.mElementInfo = self.LoadElements()
+        print(self.mElementInfo[1])
+    
+    def LoadElements(self):
+        with open('elements2.0', mode ='r') as file:
+            return [row for row in csv.reader(file)]
+    
+    def GetElementAtt(self, element, attr):
+        indextoatt = self.mElementInfo.index(attr)
+        return self.mElementInfo[element,indextoatt]
+
+dat = SourceData()
 
 class Molecule:
     def __init__(self, xyzfile) -> None:
@@ -105,6 +121,8 @@ class Atom:
         self.mName = mName
         self.mPos = mPos 
         self.mPeriod = self.__DeterminePeriod()
+        self.mGroup = 0
+        self.mZ = self.__DetermineZ()
         self.mCoreFod = []
         self.mValenceFod = []
         self.mfods = []
@@ -114,7 +132,10 @@ class Atom:
         self.mBondTo = atom2
     
     def __DeterminePeriod():
-        pass
+        return dat.GetElementAtt()
+
+    def __DetermineZ(self):
+        return 
 
     def __DetermineGroup():
         pass
@@ -130,7 +151,6 @@ class Bond:
         self.mOrder = order
     def __str__(self) -> str:
         return f"From {self.mAtoms[0]} to {self.mAtoms[1]}. Order: {self.mOrder}"
-
 
 
 mol = Molecule("Molecules_XYZ/test3.xyz")
