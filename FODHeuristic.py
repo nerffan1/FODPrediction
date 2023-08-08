@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 #Atom Class
 
-from numpy import array, dot, cross
+import numpy as np
 from numpy.linalg import inv, det
 from scipy.spatial.transform import Rotation
 import csv
@@ -12,17 +12,27 @@ from rdkit.Chem import rdDetermineBonds
 from rdkit.Chem import AllChem
 
 class SourceData:
+    
     def __init__(self):
-        self.mElementInfo = self.LoadElements()
-        print(self.mElementInfo[1])
+        SourceData.mElementInfo = self.LoadElements()
+        SourceData.mElemNames = self.LoadNames()
+        print(SourceData.mElemNames)
     
     def LoadElements(self):
         with open('elements2.0', mode ='r') as file:
-            return [row for row in csv.reader(file)]
+            return np.genfromtxt(file, delimiter=',', dtype=None)
     
+    def LoadNames(self):
+        return SourceData.mElementInfo[1:,1]
+
     def GetElementAtt(self, element, attr):
         indextoatt = self.mElementInfo.index(attr)
         return self.mElementInfo[element,indextoatt]
+
+    #Class Variables    
+    mElementInfo = []
+    mElemNames = []
+
 
 dat = SourceData()
 
