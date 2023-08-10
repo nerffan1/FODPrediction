@@ -88,13 +88,17 @@ class Molecule:
         return str1+str2+str3+str4 
 
     #Public Methods
-    """Predict FOD positions"""
     def CalculateFODs(self):
+        """
+        Predict FOD positions
+        """
         self.__CoreFODs()
         pass
     
-    """Create an XYZ file with"""
     def CreateXYZ(self):
+        """
+        Create an XYZ file with
+        """
         with open("output",'w') as output:
             #First 2 lines
             output.write(str(len(self.mAtoms) + len(self.mfods)))
@@ -107,8 +111,10 @@ class Molecule:
                 output.write(' '.join(["X", *[str(f) for f in fod.mPos]]) + '\n')
 
     #Private Methods
-    """Load the """
     def __LoadXYZ(self):
+        """
+        Load the XYZ file
+        """
         XYZ = open(self.mFile, "r")
         count = int(XYZ.readline()) #Read Size
         self.mComment = XYZ.readline() #Comment
@@ -141,8 +147,8 @@ class Molecule:
         for atom in self.mAtoms:
             self.mfods.append(FOD(atom, atom.mPos))
     
-    """Create additional FODs"""
     def DetermineFODs(self):
+        """Create additional FODs"""
         for bond in self.mBonds:
             print(bond)
 
@@ -221,7 +227,6 @@ class Bond:
         self.mOrder = order
     def __str__(self) -> str:
         return f"From {self.mAtoms[0]} to {self.mAtoms[1]}. Order: {self.mOrder}"
-
 
 GlobalData._debug_samplenames()
 mol = Molecule("Molecules_XYZ/test3.xyz")
