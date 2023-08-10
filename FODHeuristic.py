@@ -2,8 +2,8 @@
 #Atom Class
 
 import numpy as np
+import scipy.spatial.transform 
 from numpy.linalg import inv, det
-from scipy.spatial.transform import Rotation
 import csv
 
 #RDKit for BondPrediction
@@ -11,30 +11,55 @@ from rdkit import Chem
 from rdkit.Chem import rdDetermineBonds
 from rdkit.Chem import AllChem
 
-class SourceData:
+class GlobalData:
     
     def __init__(self):
-        SourceData.mElementInfo = self.LoadElements()
-        SourceData.mElemNames = self.LoadNames()
-        print(SourceData.mElemNames)
+        GlobalData.mElementInfo = self.LoadElements()
+        GlobalData.mElemNames = self.LoadNames()
     
+    #Public Functions
     def LoadElements(self):
         with open('elements2.0', mode ='r') as file:
-            return np.genfromtxt(file, delimiter=',', dtype=None)
-    
-    def LoadNames(self):
-        return SourceData.mElementInfo[1:,1]
+            return np.genfromtxt(file, delimiter=',', encoding=None, dtype=None)
 
-    def GetElementAtt(self, element, attr):
-        indextoatt = self.mElementInfo.index(attr)
-        return self.mElementInfo[element,indextoatt]
+    def LoadNames(self):
+        """
+        Names are loaded in their abbreviated form, since XYZ files receive them this way
+        """
+        return GlobalData.mElementInfo[1:,2]
+
+    def GetElementAtt(name: str, attr: str):
+        """
+        Gets the attribute found in the elements2.0 file
+
+        Parameters:
+        name (str): The name of the atom, in abbreviated form.
+        attr (str): The attribute you want of chosen atom, found in the first row of elements2.0
+
+        """
+
+        if attr == "AtomicNumber":
+            attrib_i = np.where(GlobalData.mElemNames == name)[0]
+            print(GlobalData.mElemNames)
+            # We must offset index by +1 because the array starts at zero instead of 1
+            return attrib_i + 1      
+        else:
+            element_i = np.where(GlobalData.mElemNames == name)[0]
+            attrib_i = np.where(GlobalData.mElementInfo[0] == attr)[0]
+            #We offset by 1 because the Info list has attribute names on row 1
+            return GlobalData.mElementInfo[element_i + 1,attrib_i]
+
+    #Degugging tests
+    def _debug_samplenames():
+        for att in ["AtomicNumber", "Group", "Period", "Element","Metal"]:
+            print(f'{att}: {GlobalData.GetElementAtt("Au", att)}')
 
     #Class Variables    
     mElementInfo = []
     mElemNames = []
 
 
-dat = SourceData()
+dat = GlobalData()
 
 class Molecule:
     def __init__(self, xyzfile) -> None:
@@ -130,9 +155,9 @@ class Atom:
     def __init__(self, mName, mPos) -> None:
         self.mName = mName
         self.mPos = mPos 
-        self.mPeriod = self.__DeterminePeriod()
+        self.mZ = GlobalData.GetElementAtt(self.mName, "AtomicNUmber")
+        self.mPeriod = GlobalData.GetElementAtt(self.mName, "Period" )
         self.mGroup = 0
-        self.mZ = self.__DetermineZ()
         self.mCoreFod = []
         self.mValenceFod = []
         self.mfods = []
@@ -143,9 +168,6 @@ class Atom:
     
     def __DeterminePeriod():
         return dat.GetElementAtt()
-
-    def __DetermineZ(self):
-        return 
 
     def __DetermineGroup():
         pass
@@ -168,3 +190,4 @@ mol._debug_printAtoms()
 mol._debug_printBondMatrix()
 mol.CreateXYZ()
 mol.DetermineFODs()
+#GlobalData._debug_samplenames()
