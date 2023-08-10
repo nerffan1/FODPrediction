@@ -133,10 +133,10 @@ class Molecule:
             self.mAtoms[atom1]._AddBond(atom2, bond.GetBondTypeAsDouble())
             self.mAtoms[atom2]._AddBond(atom1, bond.GetBondTypeAsDouble())
     
-    """Populate Core FODs for each atom
-    Create 1s FODs first.
-    """    
     def __CoreFODs(self):
+        """Populate Core FODs for each atom
+        Create 1s FODs first.
+        """    
         #Create 1s for all atoms
         for atom in self.mAtoms:
             self.mfods.append(FOD(atom, atom.mPos))
