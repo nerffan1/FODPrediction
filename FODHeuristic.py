@@ -56,12 +56,13 @@ class GlobalData:
     #Degugging tests
     def _debug_samplenames():
         for att in ["AtomicNumber", "Group", "Period", "Element","Metal", "NumberofShells","NumberofValence"]:
-            print(f'{att}: {GlobalData.GetElementAtt("Au", att)}')
+            print(f'{att}: {GlobalData.GetElementAtt("Ga", att)}')
             print(GlobalData.GetZAtt(31, att))
 
     #Class Variables    
     mElementInfo = []
     mElemNames = []
+    mClosedGroups = [2,12,18]
 
 
 dat = GlobalData()
@@ -116,10 +117,11 @@ class Molecule:
             self.mAtoms.append(Atom(coor[0],coor[1:4])) #Name and Position
         XYZ.close()
     
-    """Calculate Bonds using the RDKit library.
-    This will be used for prototyping  
-    """
     def __RD_Bonds(self):
+        """
+        Calculate Bonds using the RDKit library.
+        This will be used for prototyping  
+        """
         mol = Chem.MolFromXYZFile(self.mFile) 
         rdDetermineBonds.DetermineConnectivity(mol)
         rdDetermineBonds.DetermineBondOrders(mol, charge=0)
@@ -128,6 +130,8 @@ class Molecule:
             atom2 = bond.GetEndAtomIdx() 
             self.mBonds.append(Bond(atom1, atom2,
                                    bond.GetBondTypeAsDouble()))
+            self.mAtoms[atom1]._AddBond(atom2, bond.GetBondTypeAsDouble())
+            self.mAtoms[atom2]._AddBond(atom1, bond.GetBondTypeAsDouble())
     
     """Populate Core FODs for each atom
     Create 1s FODs first.
@@ -143,12 +147,18 @@ class Molecule:
             print(bond)
 
     #Debugging Methods 
-    """Print atom names and positions"""
     def _debug_printAtoms(self):
+        """Print atom names and positions"""
         for atom in self.mAtoms:  
-            print(atom.mName, "at", atom.mPos, "Group:", atom.mGroup)
+            print("---------------------------------")
+            print(atom.mName, "at", atom.mPos)
+            print("Group:", atom.mGroup)
+            print(f'Valency: {atom.mValenceELec}')
+            print(f'BondedAtoms: {atom.mBondTo}' )
+            closedshell = atom._CheckFullShell()
+            print (f'Shell Full: {closedshell}')
+            if (closedshell == False): print ("###NONCLOSED SHELL SYSTEM###")
 
-    
     def _debug_printBondMatrix(self):
         print("##BOND MATRIX##")
         str4 = [[0] * len(self.mAtoms) for _ in range(len(self.mAtoms))]
@@ -159,19 +169,45 @@ class Molecule:
     
 class Atom:
     def __init__(self, mName, mPos) -> None:
+        #Atom Attributes
         self.mName = mName
         self.mPos = mPos 
         self.mZ = GlobalData.GetElementAtt(self.mName, "AtomicNumber")
         self.mPeriod = GlobalData.GetZAtt(self.mZ, "Period" )
-        self.mGroup = GlobalData.GetZAtt(self.mZ, "Group" )
-        self.mCoreFod = []
-        self.mValenceFod = []
-        self.mfods = []
+        self.mGroup = int(GlobalData.GetZAtt(self.mZ, "Group" ))
+        self.mValenceELec = self._FindValence()
         self.mBondTo = []
-    
-    def _SetBond(self, atom2):
-        self.mBondTo = atom2
+        
+    def _AddBond(self, atom2: int, order: int):
+        self.mBondTo.append((atom2,order))
 
+    def _FindValence(self):
+        """
+        This method finds the number of valence electrons by finding the 
+        difference between the current Group and the next FullShell Group.
+        """
+        for shell in GlobalData.mClosedGroups: 
+            if self.mGroup <= shell:
+                if self.mGroup == shell:
+                    return 0
+                else:
+                    return  (shell - self.mGroup)
+                    
+    def _CheckFullShell(self):
+        checkshell = self.mValenceELec
+        for bond in self.mBondTo:
+            checkshell -= bond[1]
+        if checkshell == 0:
+            return True
+        else:
+            return False
+
+    #FOD STRUCTURE
+    class FOD_Structure:
+        def __init__(self):
+            self.mValenceFod = []
+            self.mCoreFod = []
+            self.mfods = []
     
 
 class FOD:
