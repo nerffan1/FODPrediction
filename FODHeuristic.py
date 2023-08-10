@@ -39,20 +39,25 @@ class GlobalData:
         """
 
         if attr == "AtomicNumber":
-            attrib_i = np.where(GlobalData.mElemNames == name)[0]
-            print(GlobalData.mElemNames)
+            attrib_i = np.where(GlobalData.mElemNames == name)  
             # We must offset index by +1 because the array starts at zero instead of 1
-            return attrib_i + 1      
+            return attrib_i[0].item() + 1      
         else:
             element_i = np.where(GlobalData.mElemNames == name)[0]
             attrib_i = np.where(GlobalData.mElementInfo[0] == attr)[0]
             #We offset by 1 because the Info list has attribute names on row 1
             return GlobalData.mElementInfo[element_i + 1,attrib_i]
+        
+    def GetZAtt(Z: int, attr: str):
+        attrib_i = np.where(GlobalData.mElementInfo[0] == attr)
+        #We offset by 1 because the Info list has attribute names on row 1
+        return GlobalData.mElementInfo[Z,attrib_i[0].item()]
 
     #Degugging tests
     def _debug_samplenames():
-        for att in ["AtomicNumber", "Group", "Period", "Element","Metal"]:
+        for att in ["AtomicNumber", "Group", "Period", "Element","Metal", "NumberofShells","NumberofValence"]:
             print(f'{att}: {GlobalData.GetElementAtt("Au", att)}')
+            print(GlobalData.GetZAtt(31, att))
 
     #Class Variables    
     mElementInfo = []
@@ -141,7 +146,8 @@ class Molecule:
     """Print atom names and positions"""
     def _debug_printAtoms(self):
         for atom in self.mAtoms:  
-            print(atom.mName, "at", atom.mPos)
+            print(atom.mName, "at", atom.mPos, "Group:", atom.mGroup)
+
     
     def _debug_printBondMatrix(self):
         print("##BOND MATRIX##")
@@ -155,22 +161,18 @@ class Atom:
     def __init__(self, mName, mPos) -> None:
         self.mName = mName
         self.mPos = mPos 
-        self.mZ = GlobalData.GetElementAtt(self.mName, "AtomicNUmber")
-        self.mPeriod = GlobalData.GetElementAtt(self.mName, "Period" )
-        self.mGroup = 0
+        self.mZ = GlobalData.GetElementAtt(self.mName, "AtomicNumber")
+        self.mPeriod = GlobalData.GetZAtt(self.mZ, "Period" )
+        self.mGroup = GlobalData.GetZAtt(self.mZ, "Group" )
         self.mCoreFod = []
         self.mValenceFod = []
         self.mfods = []
         self.mBondTo = []
     
-    def SetBond(self, atom2):
+    def _SetBond(self, atom2):
         self.mBondTo = atom2
-    
-    def __DeterminePeriod():
-        return dat.GetElementAtt()
 
-    def __DetermineGroup():
-        pass
+    
 
 class FOD:
     def __init__(self, parent, mPos = [0.0, 0.0, 0.0] ) -> None:
@@ -185,9 +187,8 @@ class Bond:
         return f"From {self.mAtoms[0]} to {self.mAtoms[1]}. Order: {self.mOrder}"
 
 
+GlobalData._debug_samplenames()
 mol = Molecule("Molecules_XYZ/test3.xyz")
 mol._debug_printAtoms()
-mol._debug_printBondMatrix()
 mol.CreateXYZ()
 mol.DetermineFODs()
-#GlobalData._debug_samplenames()
