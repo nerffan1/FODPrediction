@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 #Atom Class
+#Version 0.1.0
 
 import numpy as np
 import scipy.spatial.transform 
@@ -63,7 +64,9 @@ class GlobalData:
     mElementInfo = []
     mElemNames = []
     mClosedGroups = [2,12,18]
-
+    mLadder_3p = [4,10,12,18]
+    #This scheme below assumes that a 1s Core FOD will already have been placed in the FODStruct 
+    mLadder_3p_geometry = { 4: ['offcenter'], 10: ['tetra'], 12: ['tetra', 'offcenter'], 18: ['tetra', 'tetra'] }
 
 dat = GlobalData()
 
@@ -74,7 +77,7 @@ class Molecule:
         self.mAtoms = [Atom]
         self.mAtoms.clear()
         self.mBonds = []
-        self.mfods = []
+        self.mfods = [] #Replace this - exclude it to Atom classes, and loop over them
         self.__LoadXYZ()
         self.__RD_Bonds()
         self.CalculateFODs() 
@@ -109,6 +112,15 @@ class Molecule:
             #Write all FODs
             for fod in self.mfods:
                 output.write(' '.join(["X", *[str(f) for f in fod.mPos]]) + '\n')
+
+    def ClosedMol(self):
+        """
+        Checks that all atoms in the molecule have a 
+        """
+        for atom in self.mAtoms:
+            if atom._CheckFullShell() == False:
+                return False
+        return True
 
     #Private Methods
     def __LoadXYZ(self):
@@ -183,6 +195,7 @@ class Atom:
         self.mGroup = int(GlobalData.GetZAtt(self.mZ, "Group" ))
         self.mValenceELec = self._FindValence()
         self.mBondTo = []
+        self.mFODS = self.FOD_Structure(self)
         
     def _AddBond(self, atom2: int, order: int):
         self.mBondTo.append((atom2,order))
@@ -200,6 +213,11 @@ class Atom:
                     return  (shell - self.mGroup)
                     
     def _CheckFullShell(self):
+        """
+        Check that the atom has a closed shell.
+        Future: Add a variable that saves the info so that looping every time
+        this is called (if called more than once) is unnecesary
+        """
         checkshell = self.mValenceELec
         for bond in self.mBondTo:
             checkshell -= bond[1]
@@ -208,13 +226,31 @@ class Atom:
         else:
             return False
 
+    #Attributes
+    
     #FOD STRUCTURE
     class FOD_Structure:
-        def __init__(self):
-            self.mValenceFod = []
-            self.mCoreFod = []
+        def __init__(self, atom):
+            self.mCore = self.DetermineCore(atom) 
+            self.mValence = []
             self.mfods = []
-    
+
+        def DetermineCore(self,atom):
+            """
+            This function will determine the creation of Core FODs, those that are not 
+            related to bonding. 
+            Comment: The scheme is easy in the first 3 periods of the Periodic
+            Table, but it will become trickier ahead if Hybridization heuristics don't work.
+            Currently it only works for closed shell calculations (V 0.1.0)
+            """
+            #Begin with atoms preceding the transition metals
+            #Set 1s FOD, assume every atom will have it in the current iteration of code
+            #TODO: Add 1S here
+            electrons = atom.mZ + atom.mValenceELec 
+            for shellelecs in GlobalData.mLadder_3p:
+                if (electrons-shellelecs) == 0:
+                    #TODO: Here Initialize the geometries of the closed shells
+                    pass
 
 class FOD:
     def __init__(self, parent, mPos = [0.0, 0.0, 0.0] ) -> None:
