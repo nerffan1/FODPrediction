@@ -2,6 +2,7 @@
 #Atom Class
 #Version 0.1.0
 
+from typing import Any
 import numpy as np
 import scipy.spatial.transform 
 from numpy.linalg import inv, det
@@ -192,10 +193,10 @@ class Atom:
         self.mPos = mPos 
         self.mZ = GlobalData.GetElementAtt(self.mName, "AtomicNumber")
         self.mPeriod = GlobalData.GetZAtt(self.mZ, "Period" )
-        self.mGroup = int(GlobalData.GetZAtt(self.mZ, "Group" ))
+        self.mGroup = GlobalData.GetZAtt(self.mZ, "Group" )
         self.mValenceELec = self._FindValence()
         self.mBondTo = []
-        self.mFODS = self.FOD_Structure(self)
+        self.mFODS = FOD_Structure(self)
         
     def _AddBond(self, atom2: int, order: int):
         self.mBondTo.append((atom2,order))
@@ -228,29 +229,35 @@ class Atom:
 
     #Attributes
     
-    #FOD STRUCTURE
-    class FOD_Structure:
-        def __init__(self, atom):
-            self.mCore = self.DetermineCore(atom) 
-            self.mValence = []
-            self.mfods = []
 
-        def DetermineCore(self,atom):
-            """
-            This function will determine the creation of Core FODs, those that are not 
-            related to bonding. 
-            Comment: The scheme is easy in the first 3 periods of the Periodic
-            Table, but it will become trickier ahead if Hybridization heuristics don't work.
-            Currently it only works for closed shell calculations (V 0.1.0)
-            """
-            #Begin with atoms preceding the transition metals
-            #Set 1s FOD, assume every atom will have it in the current iteration of code
-            #TODO: Add 1S here
-            electrons = atom.mZ + atom.mValenceELec 
-            for shellelecs in GlobalData.mLadder_3p:
-                if (electrons-shellelecs) == 0:
-                    #TODO: Here Initialize the geometries of the closed shells
-                    pass
+#FOD STRUCTURE
+class FOD_Structure:
+    def __init__(self, atom):
+        self.mCore = []
+        self.mValence = []
+        self.mfods = []
+        self.mGeometry = []
+
+    def DetermineCore(self,atom):
+        """
+        This function will determine the creation of Core FODs, those that are not 
+        related to bonding. 
+        Comment: The scheme is easy in the first 3 periods of the Periodic
+        Table, but it will become trickier ahead if Hybridization heuristics don't work.
+        Currently it only works for closed shell calculations (V 0.1.0)
+        """
+        #Begin with atoms preceding the transition metals
+        #Set 1s FOD, assume every atom will have it in the current iteration of code
+        #TODO: Add 1S here
+        electrons = atom.mZ + atom.mValenceELec 
+        for shellelecs in GlobalData.mLadder_3p:
+            if (electrons-shellelecs) == 0:
+                #TODO: Here Initialize the geometries of the closed shells
+                pass
+
+class Tetrahedron:
+    def __init__(self) -> None:
+        pass
 
 class FOD:
     def __init__(self, parent, mPos = [0.0, 0.0, 0.0] ) -> None:
