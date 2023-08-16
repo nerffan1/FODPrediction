@@ -1,14 +1,11 @@
-#!/usr/bin/python3
-#Atom Class
-#Version 0.1.0
-from  fod_struct import *
-from  globaldata import GlobalData
-import numpy as np
-
 #RDKit for BondPrediction
 from rdkit import Chem
 from rdkit.Chem import rdDetermineBonds
 from rdkit.Chem import AllChem
+
+#Custom Made library
+from globaldata import GlobalData
+from fod_struct import *
 
 class Molecule:
     def __init__(self, xyzfile) -> None:
@@ -123,51 +120,7 @@ class Molecule:
         for b in self.mBonds:
             str4[b.mAtoms[0]][b.mAtoms[1]] = b.mOrder
         for atom in str4:
-            print(atom)
-    
-class Atom:
-    def __init__(self, mName, mPos) -> None:
-        #Atom Attributes
-        self.mName = mName
-        self.mPos = mPos 
-        self.mZ = GlobalData.GetElementAtt(self.mName, "AtomicNumber")
-        self.mPeriod = GlobalData.GetZAtt(self.mZ, "Period" )
-        self.mGroup = int(GlobalData.GetZAtt(self.mZ, "Group" ))
-        self.mValenceELec = self._FindValence()
-        self.mBondTo = []
-        self.mFODS = FODStructure(self)
-        
-    def _AddBond(self, atom2: int, order: int):
-        self.mBondTo.append((atom2,order))
-
-    def _FindValence(self):
-        """
-        This method finds the number of valence electrons by finding the 
-        difference between the current Group and the next FullShell Group.
-        """
-        for shell in GlobalData.mClosedGroups: 
-            if self.mGroup <= shell:
-                if self.mGroup == shell:
-                    return 0
-                else:
-                    return  (shell - self.mGroup)
-                    
-    def _CheckFullShell(self):
-        """
-        Check that the atom has a closed shell.
-        Future: Add a variable that saves the info so that looping every time
-        this is called (if called more than once) is unnecesary
-        """
-        checkshell = self.mValenceELec
-        for bond in self.mBondTo:
-            checkshell -= bond[1]
-        if checkshell == 0:
-            return True
-        else:
-            return False
-
-    #Attributes
-    
+            print(atom)    
 
 class Bond:
     def __init__(self,start,end,order):
@@ -175,10 +128,3 @@ class Bond:
         self.mOrder = order
     def __str__(self) -> str:
         return f"From {self.mAtoms[0]} to {self.mAtoms[1]}. Order: {self.mOrder}"
-
-dat = GlobalData()
-GlobalData._debug_samplenames()
-mol = Molecule("Molecules_XYZ/test3.xyz")
-mol._debug_printAtoms()
-mol.CreateXYZ()
-mol.DetermineFODs()
