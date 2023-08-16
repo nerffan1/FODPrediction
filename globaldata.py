@@ -65,3 +65,6 @@ class GlobalData:
     #This scheme below assumes that a 1s Core FOD will already have been placed in the FODStruct 
     mLadder_3p_geometry = { 4: ['offcenter'], 10: ['tetra'], 12: ['tetra', 'offcenter'], 18: ['tetra', 'tetra'] }
     mShellShapes = {1: ['point'], 4: ['tetra'], 9: ['triaugmented']}
+
+    #Geometries
+    

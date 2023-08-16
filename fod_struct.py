@@ -6,6 +6,7 @@
 #  - In far future, somehow implement the triaugmented triangular prism that corresponds to sp3d5 ( 9 FODs, 18 electrons) 
 #Author: Angel-Emilio Villegas S.
 from  globaldata import GlobalData
+import 3dmath
 import scipy.spatial.transform 
 from numpy.linalg import inv, det
 import csv
@@ -13,15 +14,17 @@ import csv
 #FOD STRUCTURE
 class Atom:
     def __init__(self, mName, mPos) -> None:
-        #Atom Attributes
+        #Known Attributes
         self.mName = mName
         self.mPos = mPos 
         self.mZ = GlobalData.GetElementAtt(self.mName, "AtomicNumber")
-        self.mPeriod = GlobalData.GetZAtt(self.mZ, "Period" )
+        self.mPeriod = int(GlobalData.GetZAtt(self.mZ, "Period" ))
         self.mGroup = int(GlobalData.GetZAtt(self.mZ, "Group" ))
         self.mValenceELec = self._FindValence()
+        #Undetermined Attributes
         self.mBondTo = []
         self.mFODStructure = FODStructure(self)
+        self.mSteric = -1
         
     def _AddBond(self, atom2: int, order: int):
         self.mBondTo.append((atom2,order))
@@ -73,6 +76,7 @@ class Tetrahedron(FODShell):
     """
     def __init__(self):
         super().__init__()
+        self.mShape = 'tetra'
     
     #Class Methods
     def CreateTetra(self):
