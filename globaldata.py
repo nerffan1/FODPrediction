@@ -7,7 +7,7 @@
 #  combine, then we can also combine the shared FODs (i.e. the bonding FODs), and use the monoatomic data for reference.
 #  Currently more time to look into heuristics is necessary.
 #Author: Angel-Emilio Villegas S.
-from numpy import where, genfromtxt
+from numpy import where, genfromtxt, sqrt
 
 class GlobalData:
     
@@ -67,4 +67,7 @@ class GlobalData:
     mShellShapes = {1: ['point'], 4: ['tetra'], 9: ['triaugmented']}
 
     #Geometries
-    
+    mTetraGeo = [[0,0,1],
+                [sqrt(8/9), 0, -1/3],
+                [-sqrt(2/9),sqrt(2/3), -1/3],
+                [-sqrt(2/9),-sqrt(2/3), -1/3]]

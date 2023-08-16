@@ -6,7 +6,7 @@
 #  - In far future, somehow implement the triaugmented triangular prism that corresponds to sp3d5 ( 9 FODs, 18 electrons) 
 #Author: Angel-Emilio Villegas S.
 from  globaldata import GlobalData
-import 3dmath
+import math3d
 import scipy.spatial.transform 
 from numpy.linalg import inv, det
 import csv
