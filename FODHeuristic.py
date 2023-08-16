@@ -1,75 +1,14 @@
 #!/usr/bin/python3
 #Atom Class
 #Version 0.1.0
-
-from typing import Any
+from  fod_struct import *
+from  globaldata import GlobalData
 import numpy as np
-import scipy.spatial.transform 
-from numpy.linalg import inv, det
-import csv
 
 #RDKit for BondPrediction
 from rdkit import Chem
 from rdkit.Chem import rdDetermineBonds
 from rdkit.Chem import AllChem
-
-class GlobalData:
-    
-    def __init__(self):
-        GlobalData.mElementInfo = self.LoadElements()
-        GlobalData.mElemNames = self.LoadNames()
-    
-    #Public Functions
-    def LoadElements(self):
-        with open('elements2.0', mode ='r') as file:
-            return np.genfromtxt(file, delimiter=',', encoding=None, dtype=None)
-
-    def LoadNames(self):
-        """
-        Names are loaded in their abbreviated form, since XYZ files receive them this way
-        """
-        return GlobalData.mElementInfo[1:,2]
-
-    def GetElementAtt(name: str, attr: str):
-        """
-        Gets the attribute found in the elements2.0 file
-
-        Parameters:
-        name (str): The name of the atom, in abbreviated form.
-        attr (str): The attribute you want of chosen atom, found in the first row of elements2.0
-
-        """
-
-        if attr == "AtomicNumber":
-            attrib_i = np.where(GlobalData.mElemNames == name)  
-            # We must offset index by +1 because the array starts at zero instead of 1
-            return attrib_i[0].item() + 1      
-        else:
-            element_i = np.where(GlobalData.mElemNames == name)[0]
-            attrib_i = np.where(GlobalData.mElementInfo[0] == attr)[0]
-            #We offset by 1 because the Info list has attribute names on row 1
-            return GlobalData.mElementInfo[element_i + 1,attrib_i]
-        
-    def GetZAtt(Z: int, attr: str):
-        attrib_i = np.where(GlobalData.mElementInfo[0] == attr)
-        #We offset by 1 because the Info list has attribute names on row 1
-        return GlobalData.mElementInfo[Z,attrib_i[0].item()]
-
-    #Degugging tests
-    def _debug_samplenames():
-        for att in ["AtomicNumber", "Group", "Period", "Element","Metal", "NumberofShells","NumberofValence"]:
-            print(f'{att}: {GlobalData.GetElementAtt("Ga", att)}')
-            print(GlobalData.GetZAtt(31, att))
-
-    #Class Variables    
-    mElementInfo = []
-    mElemNames = []
-    mClosedGroups = [2,12,18]
-    mLadder_3p = [4,10,12,18]
-    #This scheme below assumes that a 1s Core FOD will already have been placed in the FODStruct 
-    mLadder_3p_geometry = { 4: ['offcenter'], 10: ['tetra'], 12: ['tetra', 'offcenter'], 18: ['tetra', 'tetra'] }
-
-dat = GlobalData()
 
 class Molecule:
     def __init__(self, xyzfile) -> None:
@@ -193,10 +132,10 @@ class Atom:
         self.mPos = mPos 
         self.mZ = GlobalData.GetElementAtt(self.mName, "AtomicNumber")
         self.mPeriod = GlobalData.GetZAtt(self.mZ, "Period" )
-        self.mGroup = GlobalData.GetZAtt(self.mZ, "Group" )
+        self.mGroup = int(GlobalData.GetZAtt(self.mZ, "Group" ))
         self.mValenceELec = self._FindValence()
         self.mBondTo = []
-        self.mFODS = FOD_Structure(self)
+        self.mFODS = FODStructure(self)
         
     def _AddBond(self, atom2: int, order: int):
         self.mBondTo.append((atom2,order))
@@ -230,40 +169,6 @@ class Atom:
     #Attributes
     
 
-#FOD STRUCTURE
-class FOD_Structure:
-    def __init__(self, atom):
-        self.mCore = []
-        self.mValence = []
-        self.mfods = []
-        self.mGeometry = []
-
-    def DetermineCore(self,atom):
-        """
-        This function will determine the creation of Core FODs, those that are not 
-        related to bonding. 
-        Comment: The scheme is easy in the first 3 periods of the Periodic
-        Table, but it will become trickier ahead if Hybridization heuristics don't work.
-        Currently it only works for closed shell calculations (V 0.1.0)
-        """
-        #Begin with atoms preceding the transition metals
-        #Set 1s FOD, assume every atom will have it in the current iteration of code
-        #TODO: Add 1S here
-        electrons = atom.mZ + atom.mValenceELec 
-        for shellelecs in GlobalData.mLadder_3p:
-            if (electrons-shellelecs) == 0:
-                #TODO: Here Initialize the geometries of the closed shells
-                pass
-
-class Tetrahedron:
-    def __init__(self) -> None:
-        pass
-
-class FOD:
-    def __init__(self, parent, mPos = [0.0, 0.0, 0.0] ) -> None:
-        self.mAtom = parent
-        self.mPos = mPos
-
 class Bond:
     def __init__(self,start,end,order):
         self.mAtoms = (start,end)
@@ -271,6 +176,7 @@ class Bond:
     def __str__(self) -> str:
         return f"From {self.mAtoms[0]} to {self.mAtoms[1]}. Order: {self.mOrder}"
 
+dat = GlobalData()
 GlobalData._debug_samplenames()
 mol = Molecule("Molecules_XYZ/test3.xyz")
 mol._debug_printAtoms()
