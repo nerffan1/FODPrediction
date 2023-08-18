@@ -1,9 +1,10 @@
 #Author: Angel-Emilio Villegas S.
 import numpy as np
+from typing import List
 
-def CreateTranslation(dir: np.array):
+def Translation(dir: np.array):
     """
-    Create a translational matrix
+    Create a translational matrix from vector of translation
     Returns Translation matrix
     """
     # Affine transformation
@@ -14,14 +15,15 @@ def CreateTranslation(dir: np.array):
 
     return T
 
-def TranslatePoints(dir: np.array, points: [np.array]):
+def TransformPoints(T: np.array, points: List[np.array]):
     """
     Translates all points equally in the same direction
+    T: Transformation matrix
+    points: A list of points  
     """
-    #Add a last one to create proper transformation
+    #Add 1's to last 'row' 
     l = len(points[0])
     lastrow = np.full(l,1)
     points.append(lastrow)
-    T = CreateTranslation(dir)
-    output = np.matmul(T,points.T)
-    return output[:-1]
+    
+    return (np.matmul(T,points.T)[:-1]) #Return all except last

@@ -12,22 +12,33 @@ from numpy.linalg import inv, det
 import csv
 
 #FOD STRUCTURE
+
+class Bond:
+    def __init__(self,start,end,order):
+        self.mAtoms = (start,end)
+        self.mOrder = order
+    def __str__(self) -> str:
+        return f"From {self.mAtoms[0]} to {self.mAtoms[1]}. Order: {self.mOrder}"
+    
 class Atom:
-    def __init__(self, mName, mPos) -> None:
+    def __init__(self, index: int, Name: str, Pos) -> None:
         #Known Attributes
-        self.mName = mName
-        self.mPos = mPos 
+        self.mName = Name
+        self.mPos = Pos 
+        self.mI = index
         self.mZ = GlobalData.GetElementAtt(self.mName, "AtomicNumber")
         self.mPeriod = int(GlobalData.GetZAtt(self.mZ, "Period" ))
         self.mGroup = int(GlobalData.GetZAtt(self.mZ, "Group" ))
         self.mValenceELec = self._FindValence()
         #Undetermined Attributes
+        self.mSteric = 0
+        self.mCharge = 0 #Temporarily zero for all atoms. Ionic atoms can be dealt with in the future
         self.mBondTo = []
         self.mFODStructure = FODStructure(self)
-        self.mSteric = -1
         
     def _AddBond(self, atom2: int, order: int):
-        self.mBondTo.append((atom2,order))
+        self.mBondTo.append(Bond(self.mI, atom2,order))
+        self.mSteric += 1
 
     def _FindValence(self):
         """
@@ -49,7 +60,7 @@ class Atom:
         """
         checkshell = self.mValenceELec
         for bond in self.mBondTo:
-            checkshell -= bond[1]
+            checkshell -= bond.mAtoms[1]
         if checkshell == 0:
             return True
         else:

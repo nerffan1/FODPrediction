@@ -11,13 +11,12 @@ class Molecule:
     def __init__(self, xyzfile) -> None:
         self.mFile = xyzfile
         self.mComment = ""
-        self.mAtoms = [Atom]
-        self.mAtoms.clear()
+        self.mAtoms = []
         self.mBonds = []
-        self.mfods = [] #Replace this - exclude it to Atom classes, and loop over them
         self.__LoadXYZ()
         self.__RD_Bonds()
-        self.CalculateFODs() 
+        self.CalculateFODs()
+        self.mfods = [] 
     
     #String Output
     def __str__(self) -> str:
@@ -69,7 +68,7 @@ class Molecule:
         self.mComment = XYZ.readline() #Comment
         for i in range(count):
             coor = XYZ.readline().split()
-            self.mAtoms.append(Atom(coor[0],coor[1:4])) #Name and Position
+            self.mAtoms.append(Atom(i, coor[0],coor[1:4])) #Name and Position
         XYZ.close()
     
     def __RD_Bonds(self):
@@ -83,18 +82,19 @@ class Molecule:
         for bond in mol.GetBonds():
             atom1 = bond.GetBeginAtomIdx()   
             atom2 = bond.GetEndAtomIdx() 
-            self.mBonds.append(Bond(atom1, atom2,
-                                   bond.GetBondTypeAsDouble()))
-            self.mAtoms[atom1]._AddBond(atom2, bond.GetBondTypeAsDouble())
-            self.mAtoms[atom2]._AddBond(atom1, bond.GetBondTypeAsDouble())
+            order = bond.GetBondTypeAsDouble()
+            self.mBonds.append(Bond(atom1, atom2,order))
+            self.mAtoms[atom1]._AddBond(atom2, order)
+            self.mAtoms[atom2]._AddBond(atom1, order)
     
     def __CoreFODs(self):
         """Populate Core FODs for each atom
         Create 1s FODs first.
         """    
         #Create 1s for all atoms
-        for atom in self.mAtoms:
-            self.mfods.append(FOD(atom, atom.mPos))
+       # for atom in self.mAtoms:
+            #self.mfods.append(FOD(atom, atom.mPos))
+            #Will change this feature soon
     
     def DetermineFODs(self):
         """Create additional FODs"""
@@ -107,9 +107,11 @@ class Molecule:
         for atom in self.mAtoms:  
             print("---------------------------------")
             print(atom.mName, "at", atom.mPos)
-            print("Group:", atom.mGroup)
             print(f'Valency: {atom.mValenceELec}')
-            print(f'BondedAtoms: {atom.mBondTo}' )
+            print('BondedAtoms: ')
+            for b in atom.mBondTo:
+                bonded = self.mAtoms[b.mAtoms[0]].mName
+                print(f'-- Bonded to {bonded}({b.mAtoms[1]}). Order {b.mOrder}') 
             closedshell = atom._CheckFullShell()
             print (f'Shell Full: {closedshell}')
             if (closedshell == False): print ("###NONCLOSED SHELL SYSTEM###")
@@ -121,10 +123,3 @@ class Molecule:
             str4[b.mAtoms[0]][b.mAtoms[1]] = b.mOrder
         for atom in str4:
             print(atom)    
-
-class Bond:
-    def __init__(self,start,end,order):
-        self.mAtoms = (start,end)
-        self.mOrder = order
-    def __str__(self) -> str:
-        return f"From {self.mAtoms[0]} to {self.mAtoms[1]}. Order: {self.mOrder}"
