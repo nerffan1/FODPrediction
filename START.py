@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 #Atom Class
-#Version 0.1.0
 from FODHeuristic import *
 from  globaldata import GlobalData
 

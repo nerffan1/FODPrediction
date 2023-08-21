@@ -5,6 +5,7 @@ from rdkit.Chem import AllChem
 
 #Custom Made library
 from globaldata import GlobalData
+from fod_struct import Atom #For intellisense
 from fod_struct import *
 
 class Molecule:
@@ -16,7 +17,6 @@ class Molecule:
         self.__LoadXYZ()
         self.__RD_Bonds()
         self.CalculateFODs()
-        self.mfods = [] 
     
     #String Output
     def __str__(self) -> str:
@@ -29,9 +29,12 @@ class Molecule:
     #Public Methods
     def CalculateFODs(self):
         """
-        Predict FOD positions
+        Loop through the atoms and call respective methods to 
+        calculate the FOD shells
         """
-        self.__CoreFODs()
+        for atom in self.mAtoms:
+            atom.mFODStruct.DetermineShells()
+            #Will change this feature soon
         pass
     
     def CreateXYZ(self):
@@ -40,14 +43,16 @@ class Molecule:
         """
         with open("output",'w') as output:
             #First 2 lines
-            output.write(str(len(self.mAtoms) + len(self.mfods)))
+            output.write(str(len(self.mAtoms) + self.CountFODs()))
             output.write(self.mComment + "(with calculated FODs)\n")
             #Write all atoms
             for atom in self.mAtoms:
                 output.write(' '.join([atom.mName,*atom.mPos]) + '\n')
             #Write all FODs
-            for fod in self.mfods:
-                output.write(' '.join(["X", *[str(f) for f in fod.mPos]]) + '\n')
+            for atom in self.mAtoms:
+                for fod in atom.mFODStruct.mfods:
+                    xyz = " ".join(fod)   
+                    output.write(f"X {xyz}\n")
 
     def ClosedMol(self):
         """
@@ -87,19 +92,16 @@ class Molecule:
             self.mAtoms[atom1]._AddBond(atom2, order)
             self.mAtoms[atom2]._AddBond(atom1, order)
     
-    def __CoreFODs(self):
-        """Populate Core FODs for each atom
-        Create 1s FODs first.
-        """    
-        #Create 1s for all atoms
-       # for atom in self.mAtoms:
-            #self.mfods.append(FOD(atom, atom.mPos))
-            #Will change this feature soon
-    
     def DetermineFODs(self):
         """Create additional FODs"""
         for bond in self.mBonds:
             print(bond)
+
+    def CountFODs(self):
+        count = 0
+        for atom in self.mAtoms:
+            count += len(atom.mFODStruct.mfods)
+        return count
 
     #Debugging Methods 
     def _debug_printAtoms(self):

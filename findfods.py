@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #Atom Class
-#Version 0.1.5
+#Version 0.1.6
 from FODHeuristic import *
 from  globaldata import GlobalData
 import numpy as np

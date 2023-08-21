@@ -34,7 +34,8 @@ class Atom:
         self.mSteric = 0
         self.mCharge = 0 #Temporarily zero for all atoms. Ionic atoms can be dealt with in the future
         self.mBondTo = []
-        self.mFODStructure = FODStructure(self)
+        self.mFODStruct = FODStructure(self)
+        self.mCompleteValence = False
         
     def _AddBond(self, atom2: int, order: int):
         self.mBondTo.append(Bond(self.mI, atom2,order))
@@ -60,16 +61,11 @@ class Atom:
         """
         checkshell = self.mValenceELec
         for bond in self.mBondTo:
-            checkshell -= bond.mAtoms[1]
+            checkshell -= bond.mOrder
         if checkshell == 0:
             return True
         else:
             return False
-
-class FOD:
-    def __init__(self, parent, mPos = [0.0, 0.0, 0.0] ) -> None:
-        self.mAtom = parent
-        self.mPos = mPos
 
 class FODShell:
     def __init__(self):
@@ -104,13 +100,15 @@ class Tetrahedron(FODShell):
         pass
 
 class FODStructure:
-    def __init__(self, atom: Atom):
-        self.mCore = [] #A list of FODShells, since there can be more than 1
-        self.mValence = [] #Only one shell really, a list of FODs
+    def __init__(self, parent: Atom):
+        self.mAtom = parent
         self.mfods = [] #All FODs, but are they necessary, more likley than yes, for debugging or future purposes
+        self.mCore = [] #A list of FODShells, since there can be more than 1
+                        # Should we create just the an xyz list, ordered for the shells
+        self.mValence = [] #Only one shell really, a list of FODs
         self.mGeometry = [] # A list of strings that accounts for mCore (m shells) and mValence shell (1) shapes, m + 1 elements
 
-    def DetermineCore(self,atom):
+    def DetermineShells(self):
         """
         This function will determine the creation of Core FODs, those that are not 
         related to bonding. 
@@ -120,11 +118,22 @@ class FODStructure:
         """
         #Begin with atoms preceding the transition metals
         #Set 1s FOD, assume every atom will have it in the current iteration of code
-        #TODO: Add 1S here
-        electrons = atom.mZ + atom.mValenceELec 
-        for shellelecs in GlobalData.mLadder_3p:
-            if (electrons-shellelecs) == 0:
-                #TODO: Here Initialize the geometries of the closed shells
-                pass
+        
+        # 1S Orbitals
+        self.oneS()
+        #Following orbitals
+
+        #electrons = atom.mZ + atom.mValenceELec 
+        #for shellelecs in GlobalData.mLadder_3p:
+        #   if (electrons-shellelecs) == 0:
+        #        #TODO: Here Initialize the geometries of the closed shells
+        #        pass
+    
+    def oneS(self):
+        self.mfods.append(self.mAtom.mPos) #mfods is a list of positions
+        self.mCore.append([0]) #This is the index of where the coordinates found in mfods
+        self.mGeometry.append("point")
+
+
     def CreateShell(self) -> FODShell:
         pass
