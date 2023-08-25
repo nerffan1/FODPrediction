@@ -62,11 +62,20 @@ class GlobalData:
     mElemNames = []
     mClosedGroups = [2,12,18]
     mLadder_3p = [4,10,12,18]
-    #This scheme below assumes that a 1s Core FOD will already have been placed in the FODStruct 
-    mLadder_3p_geometry = { 4: ['offcenter'], 10: ['tetra'], 12: ['tetra', 'offcenter'], 18: ['tetra', 'tetra'] }
+
+    # The following ladder is based of various atomic calculations. 
+    mGeo_Ladder = { 2: ['point'], 
+                        4: ['point','point'],
+                        10: ['point','tetra'], 
+                        12: ['point','tetra', 'point'],
+                        18: ['point', 'tetra', 'tetra'],
+                        20: ['point', 'tetra', 'tetra', 'point'], 
+                        30: ['point', 'tetra', 'tetra', 'triaug', 'point'],
+                        36: ['point', 'tetra', 'tetra', 'triaug', 'tetra'],
+                        54: ['point', 'tetra', 'triaug', 'triaug', 'tetra'] }
     mShellShapes = {1: ['point'], 4: ['tetra'], 9: ['triaugmented']}
 
-    #Geometries
+    #Geometries for known shell structures
     mTetraGeo = [[0,0,1],
                 [sqrt(8/9), 0, -1/3],
                 [-sqrt(2/9),sqrt(2/3), -1/3],

@@ -7,7 +7,8 @@
 #Author: Angel-Emilio Villegas S.
 from  globaldata import GlobalData
 import math3d
-import scipy.spatial.transform 
+import scipy.spatial.transform
+import numpy as np 
 from numpy.linalg import inv, det
 import csv
 
@@ -29,7 +30,7 @@ class Atom:
         self.mZ = GlobalData.GetElementAtt(self.mName, "AtomicNumber")
         self.mPeriod = int(GlobalData.GetZAtt(self.mZ, "Period" ))
         self.mGroup = int(GlobalData.GetZAtt(self.mZ, "Group" ))
-        self.mValenceELec = self._FindValence()
+        self.mValCount = self._FindValence()
         #Undetermined Attributes
         self.mSteric = 0
         self.mCharge = 0 #Temporarily zero for all atoms. Ionic atoms can be dealt with in the future
@@ -39,7 +40,7 @@ class Atom:
         
     def _AddBond(self, atom2: int, order: int):
         self.mBondTo.append(Bond(self.mI, atom2,order))
-        self.mSteric += 1
+        #self.mSteric += 1
 
     def _FindValence(self):
         """
@@ -59,56 +60,33 @@ class Atom:
         Future: Add a variable that saves the info so that looping every time
         this is called (if called more than once) is unnecesary
         """
-        checkshell = self.mValenceELec
+        checkshell = self.mValCount
         for bond in self.mBondTo:
             checkshell -= bond.mOrder
         if checkshell == 0:
             return True
         else:
             return False
-
-class FODShell:
-    def __init__(self):
-        self.mShape = ''
-        self.mFOD = []
-        self.mFree = 0
-        self.mBonded = 0
-        pass
-
-class Tetrahedron(FODShell):
-    """
-    Tetrahedron Class: FOD Geometry corresponding to sp3 "hybridization' geometry.
-    Roadmap: There will  be different functions to create compound transformations of FODs (e.g. the base, or peak
-    of the tetrahedron), and to rotate them in the proper direction as well.
-    """
-    def __init__(self):
-        super().__init__()
-        self.mShape = 'tetra'
     
-    #Class Methods
-    def CreateTetra(self):
+    def _CalculateStericity(self):
         """
-        This method arranges 4 FOD points in a tetrahedral form. Depending on the bonding, and free electrons,
-        the direction vector will be different. 
+        Calculates the steric number of the atom
         """
-        pass
+        if self.mSteric == 0:
+            self.mSteric = (sum([bond.mOrder for bond in self.mBondTo]) + self.mValCount)/2
+        else:
+            print("The stericity has already been determined")
 
-    def RotateTetra(self):
-        pass
-
-    def Direction(self): #You can base this direction
-        pass
+        #TODO: THIS SECTION NEED REVISION ASAP
 
 class FODStructure:
     def __init__(self, parent: Atom):
         self.mAtom = parent
-        self.mfods = [] #All FODs, but are they necessary, more likley than yes, for debugging or future purposes
-        self.mCore = [] #A list of FODShells, since there can be more than 1
-                        # Should we create just the an xyz list, ordered for the shells
+        self.mCore = [] #A list of Shells, since there can be more than 1
         self.mValence = [] #Only one shell really, a list of FODs
-        self.mGeometry = [] # A list of strings that accounts for mCore (m shells) and mValence shell (1) shapes, m + 1 elements
+        self.mfods = [] #All FINALIZED FODs
 
-    def DetermineShells(self):
+    def PrepareShells(self, atoms):
         """
         This function will determine the creation of Core FODs, those that are not 
         related to bonding. 
@@ -116,24 +94,67 @@ class FODStructure:
         Table, but it will become trickier ahead if Hybridization heuristics don't work.
         Currently it only works for closed shell calculations (V 0.1.0)
         """
-        #Begin with atoms preceding the transition metals
-        #Set 1s FOD, assume every atom will have it in the current iteration of code
-        
-        # 1S Orbitals
-        self.oneS()
-        #Following orbitals
+        #Prepare the valence shell first, since it will help determine the 
+        for bond in self.mAtom.mBondTo:
+            if bond.mOrder == 1:
+                #Add FOD in-between
+                pass
+            elif bond.mOrder == 2:
+                #Add 2 FODs, perpendicular to other 2.
+                #Probably need to check how many 
+                #Hardest one
+                pass
+            elif bond.mOrder == 3:
+                pass
 
-        #electrons = atom.mZ + atom.mValenceELec 
-        #for shellelecs in GlobalData.mLadder_3p:
-        #   if (electrons-shellelecs) == 0:
-        #        #TODO: Here Initialize the geometries of the closed shells
-        #        pass
-    
-    def oneS(self):
-        self.mfods.append(self.mAtom.mPos) #mfods is a list of positions
-        self.mCore.append([0]) #This is the index of where the coordinates found in mfods
-        self.mGeometry.append("point")
+        #Count core electrons and
+        for shell_count in GlobalData.mGeo_Ladder:
+            if self.mAtom.mZ < shell_count:
+                core_elec = shell_count
+        for shell in GlobalData.mGeo_Ladder[core_elec]:
+            if shell == 'point':
+                self.mCore.append(self.Point)
+            elif shell == 'tetra':
+                self.mCore.append(self.Tetrahedron)
+
+    def FinalizeFODs(self):
+        for shell in self.mCore:
+            self.mfods.append(shell.mfods)
 
 
-    def CreateShell(self) -> FODShell:
+    def AddFOD(self):
+        """
+        Create a function that adds FOD information to the FOD Structure
+        """
+
         pass
+    
+    class FODShell:
+        def __init__(self, shape, fods):
+            self.mShape = shape 
+            self.mCenter = [0,0,0]
+            self.mfods = fods
+
+    class Point(FODShell):
+        def __init__(self):
+            super().__init__('point', [0,0,0])
+
+    class Tetrahedron(FODShell):
+        """
+        Tetrahedron Class: FOD Geometry corresponding to sp3 "hybridization' geometry.
+        Roadmap: There will  be different functions to create compound transformations of FODs (e.g. the base, or peak
+        of the tetrahedron), and to rotate them in the proper direction as well.
+        """
+        def __init__(self):
+            super().__init__('tetra', GlobalData.mTetraGeo)
+
+        #Class Methods
+        def CreateTetra(self):
+            """
+            This method arranges 4 FOD points in a tetrahedral form. Depending on the bonding, and free electrons,
+            the direction vector will be different. 
+            """
+            pass
+
+        def RotateTetra(self):
+            pass

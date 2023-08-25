@@ -16,6 +16,7 @@ class Molecule:
         self.mBonds = []
         self.__LoadXYZ()
         self.__RD_Bonds()
+        self.CheckStericity()
         self.CalculateFODs()
     
     #String Output
@@ -33,7 +34,7 @@ class Molecule:
         calculate the FOD shells
         """
         for atom in self.mAtoms:
-            atom.mFODStruct.DetermineShells()
+            atom.mFODStruct.PrepareShells(self.mAtoms)
             #Will change this feature soon
         pass
     
@@ -75,6 +76,7 @@ class Molecule:
             coor = XYZ.readline().split()
             self.mAtoms.append(Atom(i, coor[0],coor[1:4])) #Name and Position
         XYZ.close()
+
     
     def __RD_Bonds(self):
         """
@@ -92,10 +94,12 @@ class Molecule:
             self.mAtoms[atom1]._AddBond(atom2, order)
             self.mAtoms[atom2]._AddBond(atom1, order)
     
-    def DetermineFODs(self):
-        """Create additional FODs"""
-        for bond in self.mBonds:
-            print(bond)
+    def CheckStericity(self):
+        """
+        Determine Steric number of all atoms. Currently assumes that the atoms are closed-shell
+        """
+        for atom in self.mAtoms:
+            atom._CalculateStericity()
 
     def CountFODs(self):
         count = 0
@@ -109,11 +113,12 @@ class Molecule:
         for atom in self.mAtoms:  
             print("---------------------------------")
             print(atom.mName, "at", atom.mPos)
-            print(f'Valency: {atom.mValenceELec}')
+            print(f'Valency: {atom.mValCount}')
+            print(f'Steric Number: {atom.mSteric}')
             print('BondedAtoms: ')
             for b in atom.mBondTo:
                 bonded = self.mAtoms[b.mAtoms[0]].mName
-                print(f'-- Bonded to {bonded}({b.mAtoms[1]}). Order {b.mOrder}') 
+                print(f'-- Bonded to {bonded}({b.mAtoms[1]}). Order {b.mOrder}')
             closedshell = atom._CheckFullShell()
             print (f'Shell Full: {closedshell}')
             if (closedshell == False): print ("###NONCLOSED SHELL SYSTEM###")
