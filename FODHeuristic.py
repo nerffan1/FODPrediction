@@ -76,7 +76,6 @@ class Molecule:
             coor = XYZ.readline().split()
             self.mAtoms.append(Atom(i, coor[0],coor[1:4])) #Name and Position
         XYZ.close()
-
     
     def __RD_Bonds(self):
         """
@@ -97,11 +96,16 @@ class Molecule:
     def CheckStericity(self):
         """
         Determine Steric number of all atoms. Currently assumes that the atoms are closed-shell
+        TODO: Implement some way to easily add an open-shell calculation, in which there might be 
+        open-shells
         """
         for atom in self.mAtoms:
-            atom._CalculateStericity()
+            atom.CalcSteric()
 
     def CountFODs(self):
+        """
+        Returns the amout of FODs in the molecule
+        """
         count = 0
         for atom in self.mAtoms:
             count += len(atom.mFODStruct.mfods)
@@ -116,7 +120,7 @@ class Molecule:
             print(f'Valency: {atom.mValCount}')
             print(f'Steric Number: {atom.mSteric}')
             print('BondedAtoms: ')
-            for b in atom.mBondTo:
+            for b in atom.mBonds:
                 bonded = self.mAtoms[b.mAtoms[0]].mName
                 print(f'-- Bonded to {bonded}({b.mAtoms[1]}). Order {b.mOrder}')
             closedshell = atom._CheckFullShell()

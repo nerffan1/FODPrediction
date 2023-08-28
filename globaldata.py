@@ -35,7 +35,6 @@ class GlobalData:
         attr (str): The attribute you want of chosen atom, found in the first row of elements2.0
 
         """
-
         if attr == "AtomicNumber":
             attrib_i = where(GlobalData.mElemNames == name)  
             # We must offset index by +1 because the array starts at zero instead of 1
@@ -57,13 +56,13 @@ class GlobalData:
             print(f'{att}: {GlobalData.GetElementAtt("Ga", att)}')
             print(GlobalData.GetZAtt(31, att))
 
-    #Class Variables    
+    ############Class Variables############    
     mElementInfo = []
     mElemNames = []
     mClosedGroups = [2,12,18]
     mLadder_3p = [4,10,12,18]
 
-    # The following ladder is based of various atomic calculations. 
+    # The following ladder is based of various monoatomic calculations.
     mGeo_Ladder = { 2: ['point'], 
                         4: ['point','point'],
                         10: ['point','tetra'], 
@@ -74,7 +73,8 @@ class GlobalData:
                         36: ['point', 'tetra', 'tetra', 'triaug', 'tetra'],
                         54: ['point', 'tetra', 'triaug', 'triaug', 'tetra'] }
     mShellShapes = {1: ['point'], 4: ['tetra'], 9: ['triaugmented']}
-
+    #This ladder is based of the 
+    mElecConfLadder= [2,2,6,2,6,2,10,6,2,10,6,2,10,6]
     #Geometries for known shell structures
     mTetraGeo = [[0,0,1],
                 [sqrt(8/9), 0, -1/3],

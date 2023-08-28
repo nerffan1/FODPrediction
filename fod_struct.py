@@ -22,7 +22,7 @@ class Bond:
         return f"From {self.mAtoms[0]} to {self.mAtoms[1]}. Order: {self.mOrder}"
     
 class Atom:
-    def __init__(self, index: int, Name: str, Pos) -> None:
+    def __init__(self, index: int, Name: str, Pos):
         #Known Attributes
         self.mName = Name
         self.mPos = Pos 
@@ -34,25 +34,37 @@ class Atom:
         #Undetermined Attributes
         self.mSteric = 0
         self.mCharge = 0 #Temporarily zero for all atoms. Ionic atoms can be dealt with in the future
-        self.mBondTo = []
+        self.mBonds = []
         self.mFODStruct = FODStructure(self)
-        self.mCompleteValence = False
+        self.mCompleteVal = False
         
     def _AddBond(self, atom2: int, order: int):
-        self.mBondTo.append(Bond(self.mI, atom2,order))
-        #self.mSteric += 1
+        self.mBonds.append(Bond(self.mI, atom2,order))
 
+    def CalcSteric(self) -> None:
+        self.mSteric = self.mValCount
+        print(self.mName)
+        for bond in self.mBonds:
+            self.mSteric += bond.mOrder
+        self.mSteric /= 2
+    
     def _FindValence(self):
         """
-        This method finds the number of valence electrons by finding the 
-        difference between the current Group and the next FullShell Group.
+        This method finds the number of electrons in the valence shell by finding the 
+        difference between the current Group and the last ClosedShell Group. Only works up
+        to 5th period.
+        TODO: This can be saved in data
         """
-        for shell in GlobalData.mClosedGroups: 
-            if self.mGroup <= shell:
-                if self.mGroup == shell:
-                    return 0
-                else:
-                    return  (shell - self.mGroup)
+        if self.mGroup < 4:
+            return self.mGroup
+        else:
+            if self.mPeriod < 4:
+                return (2 + (self.mGroup - 12))
+            elif self.mPeriod < 6:
+                return (self.mGroup)
+
+
+
                     
     def _CheckFullShell(self):
         """
@@ -61,30 +73,24 @@ class Atom:
         this is called (if called more than once) is unnecesary
         """
         checkshell = self.mValCount
-        for bond in self.mBondTo:
+        for bond in self.mBonds:
             checkshell -= bond.mOrder
         if checkshell == 0:
             return True
         else:
             return False
     
-    def _CalculateStericity(self):
-        """
-        Calculates the steric number of the atom
-        """
-        if self.mSteric == 0:
-            self.mSteric = (sum([bond.mOrder for bond in self.mBondTo]) + self.mValCount)/2
-        else:
-            print("The stericity has already been determined")
+    # Additional Functions
+    def __str__(self):
+        pass    
 
-        #TODO: THIS SECTION NEED REVISION ASAP
-
+######################## FOD Structure Class  ########################
 class FODStructure:
     def __init__(self, parent: Atom):
         self.mAtom = parent
-        self.mCore = [] #A list of Shells, since there can be more than 1
-        self.mValence = [] #Only one shell really, a list of FODs
-        self.mfods = [] #All FINALIZED FODs
+        self.mCore = [] #A list of FODShells
+        self.mValence = [] #A list of FODs
+        self.mfods = [] #All Finalized FODs
 
     def PrepareShells(self, atoms):
         """
@@ -95,7 +101,7 @@ class FODStructure:
         Currently it only works for closed shell calculations (V 0.1.0)
         """
         #Prepare the valence shell first, since it will help determine the 
-        for bond in self.mAtom.mBondTo:
+        for bond in self.mAtom.mBonds:
             if bond.mOrder == 1:
                 #Add FOD in-between
                 pass
