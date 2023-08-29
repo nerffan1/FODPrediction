@@ -54,7 +54,7 @@ class Molecule:
             #Write all FODs
             for atom in self.mAtoms:
                 for fod in atom.mFODStruct.mfods:
-                    print([str(x) for x in fod])
+                    print('line 57 ', [str(x) for x in fod])
                     xyz = " ".join([str(x) for x in fod])   
                     output.write(f"X {xyz}\n")
 
@@ -123,6 +123,9 @@ class Molecule:
             print(atom.mName, "at", atom.mPos)
             print(f'Valency: {atom.mValCount}')
             print(f'Steric Number: {atom.mSteric}')
+            print("Shell Structure: ")
+            for shell in atom.mFODStruct.mCore:
+                print(shell)
             print('BondedAtoms: ')
             for b in atom.mBonds:
                 bonded = self.mAtoms[b.mAtoms[0]].mName

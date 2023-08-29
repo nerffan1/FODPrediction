@@ -133,20 +133,26 @@ class FODStructure:
         printed when creating the XYZ output file
         """
         #Add the core FODs
+        print(self.mAtom.mName)
+        print('line 136', [x.mfods for x in self.mCore])
+        print('line 137', [x.mShape for x in self.mCore])
         for shell in self.mCore:
             print(shell.mShape)
             print(shell.mfods)
-            #shell.mfods *= 0.2
+            shell.mfods *= 0.2
             shell.mfods += self.mAtom.mPos   
             if self.mfods == []:
-                self.mfods = shell.mfods
+                self.mfods = [shell.mfods]
             else:
                 self.mfods = np.vstack((self.mfods,shell.mfods))  ###HOW TO concatenate FODs, easily
         #Add the Valence FODs
-        print(self.mValence)
-        print(self.mfods)
-        self.mfods = np.vstack((self.mfods,self.mValence))  
-        print(self.mfods)
+        print('line 146 ', self.mValence)
+        print('line 147 ',self.mfods)
+        if self.mfods == []:
+            self.mfods = self.mValence  
+        else:
+            self.mfods = np.vstack((self.mfods,self.mValence))
+        print('line 149 ',self.mfods)
 
     def AddFOD(self):
         """
@@ -159,6 +165,8 @@ class FODStructure:
         def __init__(self, shape, fods):
             self.mShape = shape 
             self.mfods = np.array(fods)
+        def __str__(self):
+            return self.mShape
 
     class Point(FODShell):
         def __init__(self):

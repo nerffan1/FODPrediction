@@ -7,6 +7,6 @@ import numpy as np
 
 dat = GlobalData()
 GlobalData._debug_samplenames()
-mol = Molecule("Molecules_XYZ/test5.xyz")
+mol = Molecule("Molecules_XYZ/test4.xyz")
 mol._debug_printAtoms()
 mol.CreateXYZ()
