@@ -25,7 +25,7 @@ class Atom:
     def __init__(self, index: int, Name: str, Pos):
         #Known Attributes
         self.mName = Name
-        self.mPos = Pos 
+        self.mPos = np.array(Pos) 
         self.mI = index
         self.mZ = GlobalData.GetElementAtt(self.mName, "AtomicNumber")
         self.mPeriod = int(GlobalData.GetZAtt(self.mZ, "Period" ))
@@ -33,6 +33,7 @@ class Atom:
         self.mValCount = self._FindValence()
         #Undetermined Attributes
         self.mSteric = 0
+        self.mFreePairs = 0
         self.mCharge = 0 #Temporarily zero for all atoms. Ionic atoms can be dealt with in the future
         self.mBonds = []
         self.mFODStruct = FODStructure(self)
@@ -53,7 +54,7 @@ class Atom:
         This method finds the number of electrons in the valence shell by finding the 
         difference between the current Group and the last ClosedShell Group. Only works up
         to 5th period.
-        TODO: This can be saved in data
+        TODO: This can be saved in GlobalData
         """
         if self.mGroup < 4:
             return self.mGroup
@@ -62,9 +63,6 @@ class Atom:
                 return (2 + (self.mGroup - 12))
             elif self.mPeriod < 6:
                 return (self.mGroup)
-
-
-
                     
     def _CheckFullShell(self):
         """
@@ -99,11 +97,18 @@ class FODStructure:
         Comment: The scheme is easy in the first 3 periods of the Periodic
         Table, but it will become trickier ahead if Hybridization heuristics don't work.
         Currently it only works for closed shell calculations (V 0.1.0)
+        TODO: This will assume that we are doing up to the n=3 shell, with sp3 hybridization
+        TODO: Take into account free pairs of electrons
         """
-        #Prepare the valence shell first, since it will help determine the 
+        #Prepare the valence shell first, since it will help determine the
+        # orientation of the inner shells 
         for bond in self.mAtom.mBonds:
             if bond.mOrder == 1:
-                #Add FOD in-between
+                #TODO: Add repulsion logic of the form a/r^k_{ij}
+                At1 = bond.mAtoms[0]
+                At2 = bond.mAtoms[1]
+                dx = (atoms[At2].mPos - atoms[At1].mPos)
+                self.mValence.append(atoms[At1].mPos + dx)
                 pass
             elif bond.mOrder == 2:
                 #Add 2 FODs, perpendicular to other 2.
@@ -114,19 +119,34 @@ class FODStructure:
                 pass
 
         #Count core electrons and
-        for shell_count in GlobalData.mGeo_Ladder:
-            if self.mAtom.mZ < shell_count:
-                core_elec = shell_count
-        for shell in GlobalData.mGeo_Ladder[core_elec]:
-            if shell == 'point':
-                self.mCore.append(self.Point)
-            elif shell == 'tetra':
-                self.mCore.append(self.Tetrahedron)
+        core_elec = self.mAtom.mZ - self.mAtom.mValCount
+        if core_elec != 0:
+            for shell in GlobalData.mGeo_Ladder[core_elec]:
+                if shell == 'point':
+                    self.mCore.append(self.Point())
+                elif shell == 'tetra':
+                    self.mCore.append(self.Tetrahedron())
 
     def FinalizeFODs(self):
+        """
+        Add all FODs in the FODStructure, to the atom, so that they can be
+        printed when creating the XYZ output file
+        """
+        #Add the core FODs
         for shell in self.mCore:
-            self.mfods.append(shell.mfods)
-
+            print(shell.mShape)
+            print(shell.mfods)
+            #shell.mfods *= 0.2
+            shell.mfods += self.mAtom.mPos   
+            if self.mfods == []:
+                self.mfods = shell.mfods
+            else:
+                self.mfods = np.vstack((self.mfods,shell.mfods))  ###HOW TO concatenate FODs, easily
+        #Add the Valence FODs
+        print(self.mValence)
+        print(self.mfods)
+        self.mfods = np.vstack((self.mfods,self.mValence))  
+        print(self.mfods)
 
     def AddFOD(self):
         """
@@ -138,12 +158,11 @@ class FODStructure:
     class FODShell:
         def __init__(self, shape, fods):
             self.mShape = shape 
-            self.mCenter = [0,0,0]
-            self.mfods = fods
+            self.mfods = np.array(fods)
 
     class Point(FODShell):
         def __init__(self):
-            super().__init__('point', [0,0,0])
+            super().__init__('point', [0.0,0.0,0.0])
 
     class Tetrahedron(FODShell):
         """

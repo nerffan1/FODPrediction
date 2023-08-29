@@ -60,7 +60,6 @@ class GlobalData:
     mElementInfo = []
     mElemNames = []
     mClosedGroups = [2,12,18]
-    mLadder_3p = [4,10,12,18]
 
     # The following ladder is based of various monoatomic calculations.
     mGeo_Ladder = { 2: ['point'], 
@@ -76,7 +75,10 @@ class GlobalData:
     #This ladder is based of the 
     mElecConfLadder= [2,2,6,2,6,2,10,6,2,10,6,2,10,6]
     #Geometries for known shell structures
-    mTetraGeo = [[0,0,1],
-                [sqrt(8/9), 0, -1/3],
+    mTetraGeo = [[0.0,0.0,1.0],
+                [sqrt(8/9), 0.0, -1/3],
                 [-sqrt(2/9),sqrt(2/3), -1/3],
                 [-sqrt(2/9),-sqrt(2/3), -1/3]]
+    
+    #Molecules
+    mAtoms = []

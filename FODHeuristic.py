@@ -17,7 +17,9 @@ class Molecule:
         self.__LoadXYZ()
         self.__RD_Bonds()
         self.CheckStericity()
+        GlobalData.mAtoms = self.mAtoms
         self.CalculateFODs()
+
     
     #String Output
     def __str__(self) -> str:
@@ -36,7 +38,7 @@ class Molecule:
         for atom in self.mAtoms:
             atom.mFODStruct.PrepareShells(self.mAtoms)
             #Will change this feature soon
-        pass
+            atom.mFODStruct.FinalizeFODs()
     
     def CreateXYZ(self):
         """
@@ -48,11 +50,12 @@ class Molecule:
             output.write(self.mComment + "(with calculated FODs)\n")
             #Write all atoms
             for atom in self.mAtoms:
-                output.write(' '.join([atom.mName,*atom.mPos]) + '\n')
+                output.write(' '.join([atom.mName,*[str(x) for x in atom.mPos]]) + '\n')
             #Write all FODs
             for atom in self.mAtoms:
                 for fod in atom.mFODStruct.mfods:
-                    xyz = " ".join(fod)   
+                    print([str(x) for x in fod])
+                    xyz = " ".join([str(x) for x in fod])   
                     output.write(f"X {xyz}\n")
 
     def ClosedMol(self):
@@ -74,7 +77,8 @@ class Molecule:
         self.mComment = XYZ.readline() #Comment
         for i in range(count):
             coor = XYZ.readline().split()
-            self.mAtoms.append(Atom(i, coor[0],coor[1:4])) #Name and Position
+            atom_xyz = [float(x) for x in coor[1:4]]
+            self.mAtoms.append(Atom(i, coor[0],atom_xyz)) #Name and Position
         XYZ.close()
     
     def __RD_Bonds(self):
