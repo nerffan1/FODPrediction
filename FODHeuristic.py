@@ -121,8 +121,8 @@ class Molecule:
             print("---------------------------------")
             print(atom.mName, "at", atom.mPos)
             print(f'Valency: {atom.mValCount}')
-            print(f'Steric Number: {atom.mSteric}')
-            print("Shell Structure: ")
+            print(f'Steric Number: {atom.mSteric} ({GlobalData.mShellShapes[atom.mSteric]})')
+            print("Shell (Core) Structure: ")
             for shell in atom.mFODStruct.mCore:
                 print(shell)
             print('BondedAtoms: ')

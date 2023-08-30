@@ -44,7 +44,6 @@ class Atom:
 
     def CalcSteric(self) -> None:
         self.mSteric = self.mValCount
-        print(self.mName)
         for bond in self.mBonds:
             self.mSteric += bond.mOrder
         self.mSteric /= 2
@@ -132,11 +131,7 @@ class FODStructure:
         printed when creating the XYZ output file
         """
         #Add the core FODs
-        print(self.mAtom.mName, f'({self.mAtom.mI}) at {self.mAtom.mPos}')
-        print('line 136', [x.mfods for x in self.mCore])
-        print('line 137', [x.mShape for x in self.mCore])
         for shell in self.mCore:
-            print("Core Shells (", shell.mShape, '): ', shell.mfods)
             shell.mfods *= 0.2
             shell.mfods += self.mAtom.mPos   
             if self.mfods == []:
@@ -144,13 +139,10 @@ class FODStructure:
             else:
                 self.mfods = np.vstack((self.mfods,shell.mfods))  ###HOW TO concatenate FODs, easily
         #Add the Valence FODs
-        print('Valence FODs: ', self.mValence)
-        print('Before CAT: ',self.mfods)
         if self.mfods == []:
             self.mfods = self.mValence  
         else:
             self.mfods = np.vstack((self.mfods,self.mValence))
-        print('All FODs(?): ',self.mfods)
 
     def AddFOD(self):
         """
