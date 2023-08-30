@@ -107,9 +107,8 @@ class FODStructure:
                 #TODO: Add repulsion logic of the form a/r^k_{ij}
                 At1 = bond.mAtoms[0]
                 At2 = bond.mAtoms[1]
-                dx = (atoms[At2].mPos - atoms[At1].mPos)
+                dx = (atoms[At2].mPos - atoms[At1].mPos)/2
                 self.mValence.append(atoms[At1].mPos + dx)
-                pass
             elif bond.mOrder == 2:
                 #Add 2 FODs, perpendicular to other 2.
                 #Probably need to check how many 
@@ -133,12 +132,11 @@ class FODStructure:
         printed when creating the XYZ output file
         """
         #Add the core FODs
-        print(self.mAtom.mName)
+        print(self.mAtom.mName, f'({self.mAtom.mI}) at {self.mAtom.mPos}')
         print('line 136', [x.mfods for x in self.mCore])
         print('line 137', [x.mShape for x in self.mCore])
         for shell in self.mCore:
-            print(shell.mShape)
-            print(shell.mfods)
+            print("Core Shells (", shell.mShape, '): ', shell.mfods)
             shell.mfods *= 0.2
             shell.mfods += self.mAtom.mPos   
             if self.mfods == []:
@@ -146,13 +144,13 @@ class FODStructure:
             else:
                 self.mfods = np.vstack((self.mfods,shell.mfods))  ###HOW TO concatenate FODs, easily
         #Add the Valence FODs
-        print('line 146 ', self.mValence)
-        print('line 147 ',self.mfods)
+        print('Valence FODs: ', self.mValence)
+        print('Before CAT: ',self.mfods)
         if self.mfods == []:
             self.mfods = self.mValence  
         else:
             self.mfods = np.vstack((self.mfods,self.mValence))
-        print('line 149 ',self.mfods)
+        print('All FODs(?): ',self.mfods)
 
     def AddFOD(self):
         """

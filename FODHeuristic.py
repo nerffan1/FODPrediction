@@ -44,7 +44,7 @@ class Molecule:
         """
         Create an XYZ file with
         """
-        with open("output",'w') as output:
+        with open("output.xyz",'w') as output:
             #First 2 lines
             output.write(str(len(self.mAtoms) + self.CountFODs()))
             output.write(self.mComment + "(with calculated FODs)\n")
@@ -54,7 +54,6 @@ class Molecule:
             #Write all FODs
             for atom in self.mAtoms:
                 for fod in atom.mFODStruct.mfods:
-                    print('line 57 ', [str(x) for x in fod])
                     xyz = " ".join([str(x) for x in fod])   
                     output.write(f"X {xyz}\n")
 
