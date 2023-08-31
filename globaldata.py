@@ -81,7 +81,7 @@ class GlobalData:
                 [-sqrt(2/9),-sqrt(2/3), -1/3]]
     mTriPlane = [[0,sqrt(3)/2,0],
                  [-sqrt(3)/2,-sqrt(3)/2,0],
-                 [sqrt(3)/2,-sqrt(3)/2,0]]
+                 [-sqrt(3)/2,-sqrt(3)/2,0]]
     
     #Molecules
     mAtoms = []

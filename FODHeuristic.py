@@ -121,14 +121,17 @@ class Molecule:
             print("---------------------------------")
             print(atom.mName, "at", atom.mPos)
             print(f'Valency: {atom.mValCount}')
-            print(f'Steric Number: {atom.mSteric} ({GlobalData.mShellShapes[atom.mSteric]})')
+            print(f'Steric Number: {atom.mSteric}')
+            print(f'Free Pairs: {atom.mFreePairs}')
             print("Shell (Core) Structure: ")
             for shell in atom.mFODStruct.mCore:
                 print(shell)
+            
             print('BondedAtoms: ')
             for b in atom.mBonds:
-                bonded = self.mAtoms[b.mAtoms[0]].mName
+                bonded = self.mAtoms[b.mAtoms[1]].mName
                 print(f'-- Bonded to {bonded}({b.mAtoms[1]}). Order {b.mOrder}')
+            
             closedshell = atom._CheckFullShell()
             print (f'Shell Full: {closedshell}')
             if (closedshell == False): print ("###NONCLOSED SHELL SYSTEM###")

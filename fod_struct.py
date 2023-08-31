@@ -46,8 +46,9 @@ class Atom:
     def CalcSteric(self) -> None:
         self.mSteric = self.mValCount
         for bond in self.mBonds:
-            self.mSteric += bond.mOrder
-        self.mSteric /= 2
+            self.mSteric += bond.mOrder 
+        self.mFreePairs = int((self.mSteric - np.sum([2*x.mOrder for x in self.mBonds ]))/2)
+        self.mSteric = self.mFreePairs + len(self.mBonds)
     
     def _FindValence(self):
         """
@@ -70,7 +71,11 @@ class Atom:
         Future: Add a variable that saves the info so that looping every time
         this is called (if called more than once) is unnecesary
         """
-        checkshell = self.mValCount
+        #Determine How many electrons are needed to fill shell
+        for ClGrp in GlobalData.mClosedGroups:
+            if self.mGroup < ClGrp:
+                checkshell = ClGrp - self.mGroup
+                break 
         for bond in self.mBonds:
             checkshell -= bond.mOrder
         if checkshell == 0:
@@ -96,7 +101,7 @@ class FODStructure:
         related to bonding. 
         Comment: The scheme is easy in the first 3 periods of the Periodic
         Table, but it will become trickier ahead if Hybridization heuristics don't work.
-        Currently it only works for closed shell calculations (V 0.1.0)
+        Currently it only works for closed shell calculations (V 0.1).
         TODO: This will assume that we are doing up to the n=3 shell, with sp3 hybridization
         TODO: Take into account free pairs of electrons
         """
@@ -106,10 +111,10 @@ class FODStructure:
             if bond.mOrder == 1:
                 self.mValence.append(self.SingleBondFOD(bond, atoms))
             elif bond.mOrder == 2:
-                #Add 2 FODs, perpendicular to other 2.
-                #Probably need to check how many 
-                #Hardest one, perhaps?
-                pass
+                #Add 2 FODs, perpendicular to other 2
+                if [len(self.mAtom.mBonds) == 2]:
+                    pass
+
             elif bond.mOrder == 3:
                 pass
 
