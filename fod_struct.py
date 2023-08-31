@@ -104,6 +104,7 @@ class FODStructure:
         Currently it only works for closed shell calculations (V 0.1).
         TODO: This will assume that we are doing up to the n=3 shell, with sp3 hybridization
         TODO: Take into account free pairs of electrons
+        TODO: For mOrder=2, there are many schemes to determine what information to use 
         """
         #Prepare the valence shell first, since it will help determine the
         # orientation of the inner shells 
@@ -111,9 +112,19 @@ class FODStructure:
             if bond.mOrder == 1:
                 self.mValence.append(self.SingleBondFOD(bond, atoms))
             elif bond.mOrder == 2:
-                #Add 2 FODs, perpendicular to other 2
-                if [len(self.mAtom.mBonds) == 2]:
-                    pass
+                if self.mAtom.mFreePairs == 0:
+                    if len(self.mAtom.mBonds) - 1 == 2: #Case: 2 more bonds, and thats it
+                        #Find bonds that is not the current one in question
+                        vector_for_cross = []
+                        for otherb in self.mAtom.mBonds:
+                            if otherb != bond:
+                                vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
+                    #Find the cross term, to find the perpendicular vector
+                    vector_for_cross -= self.mAtom.mPos
+                    bond2fod = np.cross(*vector_for_cross)
+                    bond2fod /= np.linalg.norm(bond2fod)
+                    self.mValence.append()
+
 
             elif bond.mOrder == 3:
                 pass
