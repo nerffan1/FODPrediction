@@ -7,8 +7,9 @@
 #Author: Angel-Emilio Villegas S.
 from  globaldata import GlobalData
 import math3d
-import scipy.spatial.transform
-import numpy as np 
+import numpy as np
+from numpy import sqrt 
+from typing import List
 from numpy.linalg import inv, det
 import csv
 
@@ -89,7 +90,7 @@ class FODStructure:
         self.mValence = [] #A list of FODs
         self.mfods = [] #All Finalized FODs
 
-    def PrepareShells(self, atoms):
+    def PrepareShells(self, atoms: List[Atom]):
         """
         This function will determine the creation of Core FODs, those that are not 
         related to bonding. 
@@ -103,15 +104,11 @@ class FODStructure:
         # orientation of the inner shells 
         for bond in self.mAtom.mBonds:
             if bond.mOrder == 1:
-                #TODO: Add repulsion logic of the form a/r^k_{ij}
-                At1 = bond.mAtoms[0]
-                At2 = bond.mAtoms[1]
-                dx = (atoms[At2].mPos - atoms[At1].mPos)/2
-                self.mValence.append(atoms[At1].mPos + dx)
+                self.mValence.append(self.SingleBondFOD(bond, atoms))
             elif bond.mOrder == 2:
                 #Add 2 FODs, perpendicular to other 2.
                 #Probably need to check how many 
-                #Hardest one
+                #Hardest one, perhaps?
                 pass
             elif bond.mOrder == 3:
                 pass
@@ -124,6 +121,32 @@ class FODStructure:
                     self.mCore.append(self.Point())
                 elif shell == 'tetra':
                     self.mCore.append(self.Tetrahedron())
+
+    def SingleBondFOD(self, bond: Bond, atoms: List[Atom]):
+        """
+        Return FOD location for a Single FOD representing a Single Bond.
+        If the bonding atoms are the same type, then the midpoint is chosen;
+        otherwise, the  
+        """
+        At1 = bond.mAtoms[0]
+        At2 = bond.mAtoms[1]
+        Z1 = atoms[At1].mZ
+        Z2 = atoms[At2].mZ
+        
+        if Z2 == Z1:
+            #Midpoint across atoms
+            g = .5
+        else:
+            #Find a weighted point in space.
+            if Z1>Z2:
+                r = sqrt(Z1/Z2)
+                g = r/(1+r)
+            else:
+                r = sqrt(Z2/Z1)
+                g = 1/(1+r)
+        #Return final value with offset
+        dx = (atoms[At2].mPos - atoms[At1].mPos)*g
+        return (atoms[At1].mPos + dx)
 
     def FinalizeFODs(self):
         """
