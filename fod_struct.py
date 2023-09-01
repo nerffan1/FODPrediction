@@ -104,15 +104,11 @@ class FODStructure:
         Currently it only works for closed shell calculations (V 0.1).
         TODO: This will assume that we are doing up to the n=3 shell, with sp3 hybridization
         TODO: Take into account free pairs of electrons
-        TODO: For mOrder=2, there are many schemes to determine what information to use 
+        TODO: For mOrder=2, there are many schemes to determine what information to use
+        TODO: Find an elegant solution to do exceptions for H bonds 
         """
-        #Prepare the valence shell first, since it will help determine the
-        # orientation of the inner shells 
-        for bond in self.mAtom.mBonds:
-            if bond.mOrder == 1:
-                self.mValence.append(self.SingleBondFOD(bond, atoms))
-            elif bond.mOrder == 2:
-                if self.mAtom.mFreePairs == 0:
+        def DoubleBond(bond, atoms):
+            if self.mAtom.mFreePairs == 0:
                     if len(self.mAtom.mBonds) - 1 == 2: #Case: 2 more bonds, and thats it
                         #Find bonds that is not the current one in question
                         vector_for_cross = []
@@ -121,13 +117,22 @@ class FODStructure:
                                 vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
                     #Find the cross term, to find the perpendicular vector
                     vector_for_cross -= self.mAtom.mPos
-                    bond2fod = np.cross(*vector_for_cross)
-                    bond2fod /= np.linalg.norm(bond2fod)
-                    self.mValence.append()
-
-
+                    bond2fod = np.cross(*vector_for_cross)*.4
+                    midpoint = self.AxialPoint_Simple(bond, atoms)
+                    #Add both FODs of the Double Bond
+                    self.mValence.append(midpoint + bond2fod)
+                    self.mValence.append(midpoint - bond2fod)
+                    
+        #Prepare the valence shell first, since it will help determine the
+        # orientation of the inner shells 
+        for bond in self.mAtom.mBonds:
+            if bond.mOrder == 1:
+                self.mValence.append(self.AxialPoint_Simple(bond, atoms))
+            elif bond.mOrder == 2:
+                DoubleBond(bond, atoms)
             elif bond.mOrder == 3:
                 pass
+
 
         #Count core electrons and
         core_elec = self.mAtom.mZ - self.mAtom.mValCount
@@ -138,7 +143,7 @@ class FODStructure:
                 elif shell == 'tetra':
                     self.mCore.append(self.Tetrahedron())
 
-    def SingleBondFOD(self, bond: Bond, atoms: List[Atom]):
+    def AxialPoint_Simple(self, bond: Bond, atoms: List[Atom]):
         """
         Return FOD location for a Single FOD representing a Single Bond.
         If the bonding atoms are the same type, then the midpoint is chosen;
@@ -156,10 +161,10 @@ class FODStructure:
             #Find a weighted point in space.
             if Z1>Z2:
                 r = sqrt(Z1/Z2)
-                g = r/(1+r)
+                g = 1/(1+r)
             else:
                 r = sqrt(Z2/Z1)
-                g = 1/(1+r)
+                g = r/(1+r)
         #Return final value with offset
         dx = (atoms[At2].mPos - atoms[At1].mPos)*g
         return (atoms[At1].mPos + dx)
