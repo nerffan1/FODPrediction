@@ -164,9 +164,19 @@ class FODStructure:
                 elif bond.mOrder == 3:
                     pass
         #Add Free-Electrons
-        if self.mAtom.mFreePairs == 1:
-            if self.mAtom.mSteric == 3:
-
+        if self.mAtom.mFreePairs == 2:
+            if self.mAtom.mSteric == 4:
+                vector_for_cross = []
+                for otherb in self.mAtom.mBonds:
+                    vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
+                #Find the cross term, to find the perpendicular vector
+                vector_for_cross -= self.mAtom.mPos
+                bond2fod = np.cross(*vector_for_cross)*.3
+                #Add both FODs of the Double Bond
+                dr = self.mAtom.mPos - np.sum(vector_for_cross, axis=0)*.2
+                self.mValence.append(dr + bond2fod)
+                self.mValence.append(dr - bond2fod)
+                
         #Count core electrons and
         core_elec = self.mAtom.mZ - self.mAtom.mValCount
         if core_elec != 0:
