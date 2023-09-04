@@ -104,7 +104,7 @@ class FODStructure:
         Currently it only works for closed shell calculations (V 0.1).
         TODO: This will assume that we are doing up to the n=3 shell, with sp3 hybridization
         TODO: Take into account free pairs of electrons
-        TODO: For mOrder=2, there are many schemes to determine what information to use
+        TODO: For mOrder=2, there are many schemes to determine direction
         TODO: Find an elegant solution to do exceptions for H bonds 
         """
         def AxialPoint_Simple(At1: Atom, At2: Atom):
@@ -115,7 +115,7 @@ class FODStructure:
             """
             Z1 = At1.mZ
             Z2 = At2.mZ
-            
+            if Z2 > 14 : Z2 -= 14
             if Z2 == Z1:
                 #Midpoint across atoms
                 g = .5
@@ -163,6 +163,7 @@ class FODStructure:
                     DoubleBond(bond, atoms)
                 elif bond.mOrder == 3:
                     pass
+        
         #Add Free-Electrons
         if self.mAtom.mFreePairs == 2:
             if self.mAtom.mSteric == 4:
@@ -176,6 +177,8 @@ class FODStructure:
                 dr = self.mAtom.mPos - np.sum(vector_for_cross, axis=0)*.2
                 self.mValence.append(dr + bond2fod)
                 self.mValence.append(dr - bond2fod)
+        elif self.mAtom.mFreePairs == 1:
+            pass
                 
         #Count core electrons and
         core_elec = self.mAtom.mZ - self.mAtom.mValCount
@@ -203,7 +206,7 @@ class FODStructure:
         #Add the Valence FODs
         if self.mfods == []:
             self.mfods = self.mValence  
-        else:
+        elif self.mValence != []:
             self.mfods = np.vstack((self.mfods,self.mValence))
 
     def AddFOD(self):
