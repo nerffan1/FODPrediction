@@ -107,7 +107,35 @@ class FODStructure:
         TODO: For mOrder=2, there are many schemes to determine what information to use
         TODO: Find an elegant solution to do exceptions for H bonds 
         """
-        def DoubleBond(bond, atoms):
+        def AxialPoint_Simple(At1: Atom, At2: Atom):
+            """
+            Return FOD location for a Single FOD representing a Single Bond.
+            If the bonding atoms are the same type, then the midpoint is chosen.
+            Atom1 is assumed to be bigger than Atom2.  
+            """
+            Z1 = At1.mZ
+            Z2 = At2.mZ
+            
+            if Z2 == Z1:
+                #Midpoint across atoms
+                g = .5
+            else:
+                #Find a weighted point in space.
+                if Z1>Z2 and Z2 != 1:
+                    r = sqrt(Z1/Z2)
+                    g = 1/(1+r)
+                #Z=1 Is an exception to the last case
+                elif Z2 == 1:
+                    r = sqrt(Z1/.4) # A temporary factor to
+                    g = r/(1+r)
+                else:
+                    r = sqrt(Z2/Z1)
+                    g = r/(1+r)
+            #Return final value with offset
+            dx = (At2.mPos - At1.mPos)*g
+            return (At1.mPos + dx)
+        
+        def DoubleBond(bond: Bond, atoms):
             if self.mAtom.mFreePairs == 0:
                     if len(self.mAtom.mBonds) - 1 == 2: #Case: 2 more bonds, and thats it
                         #Find bonds that is not the current one in question
@@ -118,7 +146,7 @@ class FODStructure:
                     #Find the cross term, to find the perpendicular vector
                     vector_for_cross -= self.mAtom.mPos
                     bond2fod = np.cross(*vector_for_cross)*.4
-                    midpoint = self.AxialPoint_Simple(bond, atoms)
+                    midpoint = AxialPoint_Simple(self.mAtom, atoms[bond.mAtoms[1]])
                     #Add both FODs of the Double Bond
                     self.mValence.append(midpoint + bond2fod)
                     self.mValence.append(midpoint - bond2fod)
@@ -126,13 +154,18 @@ class FODStructure:
         #Prepare the valence shell first, since it will help determine the
         # orientation of the inner shells 
         for bond in self.mAtom.mBonds:
-            if bond.mOrder == 1:
-                self.mValence.append(self.AxialPoint_Simple(bond, atoms))
-            elif bond.mOrder == 2:
-                DoubleBond(bond, atoms)
-            elif bond.mOrder == 3:
-                pass
-
+            if bond.mAtoms[1] > bond.mAtoms[0]:
+                if bond.mOrder == 1:
+                    at1 = self.mAtom
+                    at2 = atoms[bond.mAtoms[1]]
+                    self.mValence.append(AxialPoint_Simple(at1, at2))
+                elif bond.mOrder == 2:
+                    DoubleBond(bond, atoms)
+                elif bond.mOrder == 3:
+                    pass
+        #Add Free-Electrons
+        if self.mAtom.mFreePairs == 1:
+            if self.mAtom.mSteric == 3:
 
         #Count core electrons and
         core_elec = self.mAtom.mZ - self.mAtom.mValCount
@@ -142,32 +175,7 @@ class FODStructure:
                     self.mCore.append(self.Point())
                 elif shell == 'tetra':
                     self.mCore.append(self.Tetrahedron())
-
-    def AxialPoint_Simple(self, bond: Bond, atoms: List[Atom]):
-        """
-        Return FOD location for a Single FOD representing a Single Bond.
-        If the bonding atoms are the same type, then the midpoint is chosen;
-        otherwise, the  
-        """
-        At1 = bond.mAtoms[0]
-        At2 = bond.mAtoms[1]
-        Z1 = atoms[At1].mZ
-        Z2 = atoms[At2].mZ
         
-        if Z2 == Z1:
-            #Midpoint across atoms
-            g = .5
-        else:
-            #Find a weighted point in space.
-            if Z1>Z2:
-                r = sqrt(Z1/Z2)
-                g = 1/(1+r)
-            else:
-                r = sqrt(Z2/Z1)
-                g = r/(1+r)
-        #Return final value with offset
-        dx = (atoms[At2].mPos - atoms[At1].mPos)*g
-        return (atoms[At1].mPos + dx)
 
     def FinalizeFODs(self):
         """
