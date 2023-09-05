@@ -4,9 +4,11 @@
 from FODHeuristic import *
 from  globaldata import GlobalData
 import numpy as np
+import sys
 
+if len(sys.argv) == 1:
+    print("No arguments were given, please provide XYZ file name")
+    exit()
 dat = GlobalData()
-GlobalData._debug_samplenames()
-mol = Molecule("Molecules_XYZ/test3.xyz")
-mol._debug_printAtoms()
+mol = Molecule(sys.argv[1])
 mol.CreateXYZ()
