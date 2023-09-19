@@ -116,6 +116,8 @@ class FODStructure:
             Z1 = At1.mZ
             Z2 = At2.mZ
             if Z2 > 14 : Z2 -= 14
+            if Z1 > 14 : Z1 -= 14
+            
             if Z2 == Z1:
                 #Midpoint across atoms
                 g = .5
@@ -150,7 +152,23 @@ class FODStructure:
                     #Add both FODs of the Double Bond
                     self.mValence.append(midpoint + bond2fod)
                     self.mValence.append(midpoint - bond2fod)
-                    
+    
+        def AddFreeElectron(free: int):
+            vector_for_cross = []
+            for otherb in self.mAtom.mBonds:
+                vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
+            #Find the cross term, to find the perpendicular vector
+            vector_for_cross -= self.mAtom.mPos
+            if free == 1:
+                dr = self.mAtom.mPos - np.sum(vector_for_cross, axis=0)*.6
+                self.mValence.append(dr)
+            elif free == 2:
+                bond2fod = np.cross(*vector_for_cross)*.3
+                #Add both FODs of the Double Bond
+                dr = self.mAtom.mPos - np.sum(vector_for_cross, axis=0)*.2
+                self.mValence.append(dr + bond2fod)
+                self.mValence.append(dr - bond2fod)
+
         #Prepare the valence shell first, since it will help determine the
         # orientation of the inner shells 
         for bond in self.mAtom.mBonds:
@@ -167,19 +185,12 @@ class FODStructure:
         #Add Free-Electrons
         if self.mAtom.mFreePairs == 2:
             if self.mAtom.mSteric == 4:
-                vector_for_cross = []
-                for otherb in self.mAtom.mBonds:
-                    vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
-                #Find the cross term, to find the perpendicular vector
-                vector_for_cross -= self.mAtom.mPos
-                bond2fod = np.cross(*vector_for_cross)*.3
-                #Add both FODs of the Double Bond
-                dr = self.mAtom.mPos - np.sum(vector_for_cross, axis=0)*.2
-                self.mValence.append(dr + bond2fod)
-                self.mValence.append(dr - bond2fod)
+                AddFreeElectron(2)
         elif self.mAtom.mFreePairs == 1:
-            pass
-                
+            if self.mAtom.mSteric == 3:
+                AddFreeElectron(1)
+                pass
+            
         #Count core electrons and
         core_elec = self.mAtom.mZ - self.mAtom.mValCount
         if core_elec != 0:
