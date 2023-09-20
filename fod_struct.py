@@ -115,8 +115,9 @@ class FODStructure:
             """
             Z1 = At1.mZ
             Z2 = At2.mZ
-            if Z2 > 14 : Z2 -= 14
-            if Z1 > 14 : Z1 -= 14
+            #TODO: To Slater, or not to Slater
+            #if Z2 > 14 and Z2 < 18 : Z2 -= (2 + 2*(.35) + 8*(.85))
+            #if Z1 > 14 and Z2 < 18 : Z1 -= 14
             
             if Z2 == Z1:
                 #Midpoint across atoms
@@ -138,18 +139,48 @@ class FODStructure:
             return (At1.mPos + dx)
         
         def DoubleBond(bond: Bond, atoms):
+            def DoubleBond_Homonuc(at1: Atom, at2: Atom):
+                """
+                Return radial distance from interatomic (bonding) axis. 
+                """
+                # Radius Logic
+                if at1.mZ == at2.mZ:
+                    c = np.linalg.norm(at2.mPos - at1.mPos)
+                    elecs = GlobalData.GetFullElecCount(at1.mGroup, at1.mPeriod)
+                    rad = GlobalData.mRadii[elecs][at1.mZ]
+                    print(rad)
+                    return sqrt(rad**2 - ((c/2)**2))
+                else:
+                    l = np.linalg.norm(AxialPoint_Simple(self.mAtom, at2))
+                    if at1.mZ > at2.mZ:
+                        elecs = GlobalData.GetFullElecCount(at1.mGroup, at1.mPeriod)
+                        rad = GlobalData.mRadii[elecs][at1.mZ]
+                    else:
+                        elecs = GlobalData.GetFullElecCount(at2.mGroup, at2.mPeriod)
+                        rad = GlobalData.mRadii[elecs][at2.mZ]
+                    #Do an inscrbed triangle within the Atom-BondFOD-Atom triangle
+                    return sqrt(rad**2 - ((l)**2))
+
+                return 0
+                            
+            #Information
+            at2 = atoms[bond.mAtoms[1]]
+            
             if self.mAtom.mFreePairs == 0:
-                    if len(self.mAtom.mBonds) - 1 == 2: #Case: 2 more bonds, and thats it
-                        #Find bonds that is not the current one in question
+                    if len(self.mAtom.mBonds) - 1 == 2: #Case: 2 other bonds, no more
                         vector_for_cross = []
                         for otherb in self.mAtom.mBonds:
                             if otherb != bond:
                                 vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
-                    #Find the cross term, to find the perpendicular vector
+                    
+                    #Find perpendicular unit vector and multiply by chosen radius
                     vector_for_cross -= self.mAtom.mPos
-                    bond2fod = np.cross(*vector_for_cross)*.4
-                    midpoint = AxialPoint_Simple(self.mAtom, atoms[bond.mAtoms[1]])
+                    bond2fod = np.cross(*vector_for_cross)
+                    bond2fod /= np.linalg.norm(bond2fod)
+                    bond2fod *= DoubleBond_Homonuc(self.mAtom, at2)
+                    
                     #Add both FODs of the Double Bond
+                    midpoint = AxialPoint_Simple(self.mAtom, at2)
                     self.mValence.append(midpoint + bond2fod)
                     self.mValence.append(midpoint - bond2fod)
     
@@ -160,7 +191,10 @@ class FODStructure:
             #Find the cross term, to find the perpendicular vector
             vector_for_cross -= self.mAtom.mPos
             if free == 1:
-                dr = self.mAtom.mPos - np.sum(vector_for_cross, axis=0)*.6
+                free_dir = np.sum(vector_for_cross, axis=0)
+                free_dir /= np.linalg.norm(free_dir)
+                fulle = GlobalData.GetFullElecCount(self.mAtom.mGroup, self.mAtom.mPeriod)
+                dr = self.mAtom.mPos - free_dir*GlobalData.mRadii[fulle][self.mAtom.mZ]
                 self.mValence.append(dr)
             elif free == 2:
                 bond2fod = np.cross(*vector_for_cross)*.3
