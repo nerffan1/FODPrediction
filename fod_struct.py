@@ -139,7 +139,11 @@ class FODStructure:
             return (At1.mPos + dx)
         
         def DoubleBond(bond: Bond, atoms):
-            def DoubleBond_Homonuc(at1: Atom, at2: Atom):
+            """ 
+            Create the FODs representing the double bond. Currently the FOD filling is unidirectional (sequential)
+            and  does not account for the next atom in the iteration to see if we can further accomodate the bonding FODs 
+            """
+            def DoubleBond_Diatomic(at1: Atom, at2: Atom):
                 """
                 Return radial distance from interatomic (bonding) axis. 
                 """
@@ -151,15 +155,21 @@ class FODStructure:
                     print(rad)
                     return sqrt(rad**2 - ((c/2)**2))
                 else:
-                    l = np.linalg.norm(AxialPoint_Simple(self.mAtom, at2))
-                    if at1.mZ > at2.mZ:
-                        elecs = GlobalData.GetFullElecCount(at1.mGroup, at1.mPeriod)
-                        rad = GlobalData.mRadii[elecs][at1.mZ]
-                    else:
-                        elecs = GlobalData.GetFullElecCount(at2.mGroup, at2.mPeriod)
-                        rad = GlobalData.mRadii[elecs][at2.mZ]
+                    l = np.linalg.norm(AxialPoint_Simple(at1, at2))
+                    atoom = at1 if at1.mZ > at2.mZ else at2
+                    elecs = GlobalData.GetFullElecCount(atoom.mGroup, atoom.mPeriod)
+                    rad = GlobalData.mRadii[elecs][atoom.mZ]
                     #Do an inscrbed triangle within the Atom-BondFOD-Atom triangle
-                    return sqrt(rad**2 - ((l)**2))
+
+                    #Do alternative here
+                    r = sqrt(at1.mZ/at2.mZ) if at1.mZ < at2.mZ else sqrt(at2.mZ/at1.mZ) 
+                    g = 0
+                    L = GlobalData.mVert[10][at1.mZ]/20
+                    while abs(r - g) < 10e-6:
+                        L += .004
+                        g = np.arctan(np.radians(L/b))/np.arctan(np.radians(L/a))
+                    return L
+                    #return sqrt(rad**2 - ((l)**2))
 
                 return 0
                             
@@ -167,7 +177,7 @@ class FODStructure:
             at2 = atoms[bond.mAtoms[1]]
             
             if self.mAtom.mFreePairs == 0:
-                    if len(self.mAtom.mBonds) - 1 == 2: #Case: 2 other bonds, no more
+                    if len(self.mAtom.mBonds) == 3: # Planar
                         vector_for_cross = []
                         for otherb in self.mAtom.mBonds:
                             if otherb != bond:
@@ -177,7 +187,7 @@ class FODStructure:
                     vector_for_cross -= self.mAtom.mPos
                     bond2fod = np.cross(*vector_for_cross)
                     bond2fod /= np.linalg.norm(bond2fod)
-                    bond2fod *= DoubleBond_Homonuc(self.mAtom, at2)
+                    bond2fod *= DoubleBond_Diatomic(self.mAtom, at2)
                     
                     #Add both FODs of the Double Bond
                     midpoint = AxialPoint_Simple(self.mAtom, at2)
