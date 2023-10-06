@@ -44,10 +44,10 @@ class Molecule:
         """
         Create an XYZ file with
         """
-        with open("output.xyz",'w') as output:
+        with open("out.xyz",'w') as output:
             #First 2 lines
-            output.write(str(len(self.mAtoms) + self.CountFODs()))
-            output.write(self.mComment + "(with calculated FODs)\n")
+            output.write(str(len(self.mAtoms) + self.CountFODs()) + '\n')
+            output.write(self.mComment)
             #Write all atoms
             for atom in self.mAtoms:
                 output.write(' '.join([atom.mName,*[str(x) for x in atom.mPos]]) + '\n')

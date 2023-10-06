@@ -160,39 +160,43 @@ class FODStructure:
                     elecs = GlobalData.GetFullElecCount(atoom.mGroup, atoom.mPeriod)
                     rad = GlobalData.mRadii[elecs][atoom.mZ]
                     #Do an inscrbed triangle within the Atom-BondFOD-Atom triangle
-
-                    #Do alternative here
-                    r = sqrt(at1.mZ/at2.mZ) if at1.mZ < at2.mZ else sqrt(at2.mZ/at1.mZ) 
-                    g = 0
-                    L = GlobalData.mVert[10][at1.mZ]/20
-                    while abs(r - g) < 10e-6:
-                        L += .004
-                        g = np.arctan(np.radians(L/b))/np.arctan(np.radians(L/a))
-                    return L
-                    #return sqrt(rad**2 - ((l)**2))
+                    return sqrt(rad**2 - ((l)**2))
 
                 return 0
                             
             #Information
             at2 = atoms[bond.mAtoms[1]]
-            
+            bond2fod = np.ndarray(3)
+
             if self.mAtom.mFreePairs == 0:
                     if len(self.mAtom.mBonds) == 3: # Planar
                         vector_for_cross = []
                         for otherb in self.mAtom.mBonds:
                             if otherb != bond:
                                 vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
+                        vector_for_cross -= self.mAtom.mPos
+                        bond2fod = np.cross(*vector_for_cross)
+                    elif len(self.mAtom.mBonds) == 2: # Planar
+                        vector_for_cross = []
+                        for otherb in self.mAtom.mBonds:
+                            vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
+                        vector_for_cross -= self.mAtom.mPos
+                        bond2fod = np.cross(*vector_for_cross)       
+            else:
+                    #Find a vector that is perpendicular, using dot product
+                    #Assume 2 components, solve for the last.
+                    r = at2.mPos - at1.mPos
+                    b_z = -(10*r[0] + 2*r[1])/r[2]
+                    bond2fod = np.array([10,2,b_z])
                     
-                    #Find perpendicular unit vector and multiply by chosen radius
-                    vector_for_cross -= self.mAtom.mPos
-                    bond2fod = np.cross(*vector_for_cross)
-                    bond2fod /= np.linalg.norm(bond2fod)
-                    bond2fod *= DoubleBond_Diatomic(self.mAtom, at2)
-                    
-                    #Add both FODs of the Double Bond
-                    midpoint = AxialPoint_Simple(self.mAtom, at2)
-                    self.mValence.append(midpoint + bond2fod)
-                    self.mValence.append(midpoint - bond2fod)
+            #Find perpendicular unit vector and multiply by chosen radius
+            bond2fod /= np.linalg.norm(bond2fod)
+            bond2fod *= DoubleBond_Diatomic(self.mAtom, at2)
+            
+            #Add both FODs of the Double Bond
+            midpoint = AxialPoint_Simple(self.mAtom, at2)
+            self.mValence.append(midpoint + bond2fod)
+            self.mValence.append(midpoint - bond2fod)
     
         def AddFreeElectron(free: int):
             vector_for_cross = []
