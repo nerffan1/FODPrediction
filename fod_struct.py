@@ -94,6 +94,7 @@ class FODStructure:
         self.mCore = [] #A list of FODShells
         self.mValence = [] #A list of FODs
         self.mfods = [] #All Finalized FODs
+        self.mLastBond = 0
 
     def PrepareShells(self, atoms: List[Atom]):
         """
@@ -105,7 +106,9 @@ class FODStructure:
         TODO: This will assume that we are doing up to the n=3 shell, with sp3 hybridization
         TODO: Take into account free pairs of electrons
         TODO: For mOrder=2, there are many schemes to determine direction
-        TODO: Find an elegant solution to do exceptions for H bonds 
+        TODO: Find an elegant solution to do exceptions for H bonds
+        TODO: Account previous bonds formed, by talling previous FODs, or looking back at mBonds 
+        TODO: GlobalData.GetFullElecCount() Can be precalculated ahead of time and placed as a member vatrable
         """
         def AxialPoint_Simple(At1: Atom, At2: Atom):
             """
@@ -138,7 +141,12 @@ class FODStructure:
             dx = (At2.mPos - At1.mPos)*g
             return (At1.mPos + dx)
         
-        def DoubleBond(bond: Bond, atoms):
+        def SingleBond():
+            at1 = self.mAtom
+            at2 = atoms[bond.mAtoms[1]]
+            self.mValence.append(AxialPoint_Simple(at1, at2))
+
+        def DoubleBond(bond: Bond, atoms: List[Atom]):
             """ 
             Create the FODs representing the double bond. Currently the FOD filling is unidirectional (sequential)
             and  does not account for the next atom in the iteration to see if we can further accomodate the bonding FODs 
@@ -156,88 +164,127 @@ class FODStructure:
                     return sqrt(rad**2 - ((c/2)**2))
                 else:
                     l = np.linalg.norm(AxialPoint_Simple(at1, at2))
-                    atoom = at1 if at1.mZ > at2.mZ else at2
+                    atoom = at1 if at1.mZ < at2.mZ else at2
                     elecs = GlobalData.GetFullElecCount(atoom.mGroup, atoom.mPeriod)
                     rad = GlobalData.mRadii[elecs][atoom.mZ]
                     #Do an inscrbed triangle within the Atom-BondFOD-Atom triangle
                     return sqrt(rad**2 - ((l)**2))
-
-                return 0
                             
             #Information
             at2 = atoms[bond.mAtoms[1]]
-            bond2fod = np.ndarray(3)
+            axis2fod = np.ndarray(3)
 
-            if self.mAtom.mFreePairs == 0:
-                    if len(self.mAtom.mBonds) == 3: # Planar
-                        vector_for_cross = []
-                        for otherb in self.mAtom.mBonds:
-                            if otherb != bond:
-                                vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
-                        vector_for_cross -= self.mAtom.mPos
-                        bond2fod = np.cross(*vector_for_cross)
-                    elif len(self.mAtom.mBonds) == 2: # Planar
-                        vector_for_cross = []
-                        for otherb in self.mAtom.mBonds:
-                            vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
-                        vector_for_cross -= self.mAtom.mPos
-                        bond2fod = np.cross(*vector_for_cross)       
-            else:
-                    #Find a vector that is perpendicular, using dot product
-                    #Assume 2 components, solve for the last.
-                    r = at2.mPos - at1.mPos
-                    b_z = -(10*r[0] + 2*r[1])/r[2]
-                    bond2fod = np.array([10,2,b_z])
-                    
-            #Find perpendicular unit vector and multiply by chosen radius
-            bond2fod /= np.linalg.norm(bond2fod)
-            bond2fod *= DoubleBond_Diatomic(self.mAtom, at2)
+            def RandomPerpDir():
+                r = at2.mPos - self.mAtom.mPos
+                b_z = -(10*r[0] + 2*r[1])/r[2]
+                return np.array([10,2,b_z])        
             
-            #Add both FODs of the Double Bond
-            midpoint = AxialPoint_Simple(self.mAtom, at2)
-            self.mValence.append(midpoint + bond2fod)
-            self.mValence.append(midpoint - bond2fod)
+            def CrossPerpDir():
+                vector_for_cross = []
+                for otherb in self.mAtom.mBonds:
+                    if otherb != bond:
+                        vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
+                vector_for_cross -= self.mAtom.mPos
+                return np.cross(*vector_for_cross)
+                
+            if GlobalData.GetFullElecCount(self.mAtom.mGroup,self.mAtom.mPeriod) <= 18:
+                if self.mAtom.mFreePairs == 0:
+                    if len(self.mAtom.mBonds) == 3: # Planar
+                        axis2fod = CrossPerpDir()
+                    elif len(self.mAtom.mBonds) == 2:
+                        if self.mAtom.mBonds.index(bond) == 0:
+                            axis2fod = RandomPerpDir()
+                        else:
+                            # Cross product between atom and already-placed FODs
+                            vector_for_cross = []
+                            for fods in self.mValence:
+                                vector_for_cross.append(fods)
+                            vector_for_cross -= self.mAtom.mPos
+                            axis2fod = np.cross(*vector_for_cross)   
+                else:
+                    axis2fod = RandomPerpDir()
+                    
+                #Find perpendicular unit vector and multiply by chosen radius
+                axis2fod /= np.linalg.norm(axis2fod)
+                axis2fod *= DoubleBond_Diatomic(self.mAtom, at2)
+                
+                #Add both FODs of the Double Bond
+                midpoint = AxialPoint_Simple(self.mAtom, at2)
+
+                #Add FODs
+                self.mValence.append(midpoint + axis2fod)
+                self.mValence.append(midpoint - axis2fod)
+                at2.mFODStruct.mValence.append(midpoint + axis2fod)
+                at2.mFODStruct.mValence.append(midpoint - axis2fod)
     
         def AddFreeElectron(free: int):
+            """
+            TODO: Change conditionals as to create more concise code 
+            """
+            #Variables
             vector_for_cross = []
-            for otherb in self.mAtom.mBonds:
-                vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
-            #Find the cross term, to find the perpendicular vector
-            vector_for_cross -= self.mAtom.mPos
-            if free == 1:
-                free_dir = np.sum(vector_for_cross, axis=0)
+            fulle = GlobalData.GetFullElecCount(self.mAtom.mGroup, self.mAtom.mPeriod)
+
+            if len(self.mAtom.mBonds) > 1 :
+                for otherb in self.mAtom.mBonds:
+                    vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
+                #Find the cross term, to find the perpendicular vector
+                vector_for_cross -= self.mAtom.mPos
+                
+                if free == 1:
+                    free_dir = np.sum(vector_for_cross, axis=0)
+                    free_dir /= np.linalg.norm(free_dir)
+                    dr = self.mAtom.mPos - free_dir*GlobalData.mRadii[fulle][self.mAtom.mZ]
+                    self.mValence.append(dr)
+                elif free == 2:
+                    bond2fod = np.cross(*vector_for_cross)*.3
+                    #Add both FODs of the Double Bond
+                    dr = self.mAtom.mPos - np.sum(vector_for_cross, axis=0)*.2
+                    self.mValence.append(dr + bond2fod)
+                    self.mValence.append(dr - bond2fod)
+            
+            elif len(self.mAtom.mBonds) == 1:
+                at2 = atoms[self.mAtom.mBonds[0].mAtoms[1]]
+                free_dir = self.mAtom.mPos - at2.mPos
                 free_dir /= np.linalg.norm(free_dir)
-                fulle = GlobalData.GetFullElecCount(self.mAtom.mGroup, self.mAtom.mPeriod)
-                dr = self.mAtom.mPos - free_dir*GlobalData.mRadii[fulle][self.mAtom.mZ]
-                self.mValence.append(dr)
-            elif free == 2:
-                bond2fod = np.cross(*vector_for_cross)*.3
-                #Add both FODs of the Double Bond
-                dr = self.mAtom.mPos - np.sum(vector_for_cross, axis=0)*.2
-                self.mValence.append(dr + bond2fod)
-                self.mValence.append(dr - bond2fod)
+                if free == 1:
+                    dr = self.mAtom.mPos - free_dir*GlobalData.mRadii[fulle][self.mAtom.mZ]
+                    self.mValence.append(dr)
+                elif free == 2:
+                    #Similar to DoubleBond placement
+                    #Get direction from axis
+                    vector_for_cross = []
+                    for fods in self.mValence:
+                        vector_for_cross.append(fods)
+                    vector_for_cross -= self.mAtom.mPos
+                    axis2fod = np.cross(*vector_for_cross)
+                    
+                    #Add both FODs of the Double Bond
+                    axis2fod *= GlobalData.mVert[fulle][self.mAtom.mZ]/2
+                    dr = self.mAtom.mPos + free_dir*np.linalg.norm(axis2fod)/np.tan(np.deg2rad(54.735))
+                    self.mValence.append(dr + axis2fod)
+                    self.mValence.append(dr - axis2fod)
 
         #Prepare the valence shell first, since it will help determine the
-        # orientation of the inner shells 
-        for bond in self.mAtom.mBonds:
-            if bond.mAtoms[1] > bond.mAtoms[0]:
-                if bond.mOrder == 1:
-                    at1 = self.mAtom
-                    at2 = atoms[bond.mAtoms[1]]
-                    self.mValence.append(AxialPoint_Simple(at1, at2))
-                elif bond.mOrder == 2:
-                    DoubleBond(bond, atoms)
-                elif bond.mOrder == 3:
+        # orientation of the inner shells
+
+        if GlobalData.GetFullElecCount(self.mAtom.mGroup,self.mAtom.mPeriod) <= 18:
+            for bond in self.mAtom.mBonds:
+                if bond.mAtoms[1] > bond.mAtoms[0]:
+                    if bond.mOrder == 1:
+                        SingleBond()
+                    elif bond.mOrder == 2:
+                        DoubleBond(bond, atoms)
+                    elif bond.mOrder == 3:
+                        pass            
+            #Add Free-Electrons
+            if self.mAtom.mFreePairs == 2:
+                if self.mAtom.mSteric >= 3:
+                    AddFreeElectron(2)
+            elif self.mAtom.mFreePairs == 1:
+                if self.mAtom.mSteric == 3:
+                    AddFreeElectron(1)
                     pass
-        
-        #Add Free-Electrons
-        if self.mAtom.mFreePairs == 2:
-            if self.mAtom.mSteric == 4:
-                AddFreeElectron(2)
-        elif self.mAtom.mFreePairs == 1:
-            if self.mAtom.mSteric == 3:
-                AddFreeElectron(1)
-                pass
             
         #Count core electrons and
         core_elec = self.mAtom.mZ - self.mAtom.mValCount
