@@ -110,6 +110,8 @@ class FODStructure:
         TODO: Account previous bonds formed, by talling previous FODs, or looking back at mBonds 
         TODO: GlobalData.GetFullElecCount() Can be precalculated ahead of time and placed as a member vatrable
         """
+        at1 = self.mAtom
+
         def AxialPoint_Simple(At1: Atom, At2: Atom):
             """
             Return FOD location for a Single FOD representing a Single Bond.
@@ -142,7 +144,6 @@ class FODStructure:
             return (At1.mPos + dx)
         
         def SingleBond():
-            at1 = self.mAtom
             at2 = atoms[bond.mAtoms[1]]
             self.mValence.append(AxialPoint_Simple(at1, at2))
 
@@ -151,7 +152,7 @@ class FODStructure:
             Create the FODs representing the double bond. Currently the FOD filling is unidirectional (sequential)
             and  does not account for the next atom in the iteration to see if we can further accomodate the bonding FODs 
             """
-            def DoubleBond_Diatomic(at1: Atom, at2: Atom):
+            def DoubleBond_Diatomic(at2: Atom):
                 """
                 Return radial distance from interatomic (bonding) axis. 
                 """
@@ -206,10 +207,10 @@ class FODStructure:
                     
                 #Find perpendicular unit vector and multiply by chosen radius
                 axis2fod /= np.linalg.norm(axis2fod)
-                axis2fod *= DoubleBond_Diatomic(self.mAtom, at2)
+                axis2fod *= DoubleBond_Diatomic(at2)
                 
                 #Add both FODs of the Double Bond
-                midpoint = AxialPoint_Simple(self.mAtom, at2)
+                midpoint = AxialPoint_Simple(at1, at2)
 
                 #Add FODs
                 self.mValence.append(midpoint + axis2fod)
@@ -248,7 +249,8 @@ class FODStructure:
                 free_dir = self.mAtom.mPos - at2.mPos
                 free_dir /= np.linalg.norm(free_dir)
                 if free == 1:
-                    dr = self.mAtom.mPos - free_dir*GlobalData.mRadii[fulle][self.mAtom.mZ]
+                    l = GlobalData.mVert[fulle][self.mAtom.mZ]/2
+                    dr = self.mAtom.mPos + free_dir*l/np.tan(np.deg2rad(54.735))
                     self.mValence.append(dr)
                 elif free == 2:
                     #Similar to DoubleBond placement
@@ -265,9 +267,24 @@ class FODStructure:
                     self.mValence.append(dr + axis2fod)
                     self.mValence.append(dr - axis2fod)
 
+        def TripleBond(at2: Atom):
+            if at1.mZ == at2.mZ:        
+                c = np.linalg.norm(at2.mPos - at1.mPos)
+                elecs = GlobalData.GetFullElecCount(at1.mGroup, at1.mPeriod)
+                rad = GlobalData.mRadii[elecs][at1.mZ]
+                print(rad)
+                return sqrt(rad**2 - ((c/2)**2))
+            else:
+                l = np.linalg.norm(AxialPoint_Simple(at1, at2))
+                atoom = at1 if at1.mZ < at2.mZ else at2
+                elecs = GlobalData.GetFullElecCount(atoom.mGroup, atoom.mPeriod)
+                rad = GlobalData.mRadii[elecs][atoom.mZ]
+                #Do an inscrbed triangle within the Atom-BondFOD-Atom triangle
+                return sqrt(rad**2 - ((l)**2))
+            
+
         #Prepare the valence shell first, since it will help determine the
         # orientation of the inner shells
-
         if GlobalData.GetFullElecCount(self.mAtom.mGroup,self.mAtom.mPeriod) <= 18:
             for bond in self.mAtom.mBonds:
                 if bond.mAtoms[1] > bond.mAtoms[0]:
@@ -276,13 +293,14 @@ class FODStructure:
                     elif bond.mOrder == 2:
                         DoubleBond(bond, atoms)
                     elif bond.mOrder == 3:
+                        TripleBond(bond.mAtoms[1])
                         pass            
             #Add Free-Electrons
             if self.mAtom.mFreePairs == 2:
                 if self.mAtom.mSteric >= 3:
                     AddFreeElectron(2)
             elif self.mAtom.mFreePairs == 1:
-                if self.mAtom.mSteric == 3:
+                if self.mAtom.mSteric >= 2:
                     AddFreeElectron(1)
                     pass
             
