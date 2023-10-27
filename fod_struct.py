@@ -11,6 +11,7 @@ import numpy as np
 from numpy import sqrt 
 from typing import List
 from numpy.linalg import inv, det
+from scipy.spatial.transform import rotation as rot
 import csv
 
 #FOD STRUCTURE
@@ -111,7 +112,7 @@ class FODStructure:
         TODO: GlobalData.GetFullElecCount() Can be precalculated ahead of time and placed as a member vatrable
         """
         at1 = self.mAtom
-
+        dir = []
         def AxialPoint_Simple(At1: Atom, At2: Atom):
             """
             Return FOD location for a Single FOD representing a Single Bond.
@@ -128,25 +129,48 @@ class FODStructure:
                 #Midpoint across atoms
                 g = .5
             else:
-                #Find a weighted point in space.
-                if Z1>Z2 and Z2 != 1:
-                    r = sqrt(Z1/Z2)
-                    g = 1/(1+r)
-                #Z=1 Is an exception to the last case
-                elif Z2 == 1:
-                    r = sqrt(Z1/.4) # A temporary factor to
-                    g = r/(1+r)
-                else:
-                    r = sqrt(Z2/Z1)
-                    g = r/(1+r)
+                if At1.mPeriod == At2.mPeriod:
+                    #Find a weighted point in space.
+                    if Z1>Z2 and Z2 != 1:
+                        r = sqrt(Z1/Z2)
+                        g = 1/(1+r)
+                    #Z=1 Is an exception to the last case
+                    elif Z2 == 1:
+                        r = sqrt(Z1/.4) # A temporary factor to
+                        g = r/(1+r)
+                    else:
+                        r = sqrt(Z2/Z1)
+                        g = r/(1+r)
+                elif At1.mPeriod != At2.mPeriod:
+                    #Find a weighted point in space.
+                    if Z1>Z2 and Z2 != 1:
+                        r = sqrt(Z1/Z2)
+                        g = r/(1+r)
+                    #Z=1 Is an exception to the last case
+                    elif Z2 == 1:
+                        r = sqrt(Z1/.4) # A temporary factor to
+                        g = r/(1+r)
+                    else:
+                        r = sqrt(Z2/Z1)
+                        g = 1/(1+r)
+
             #Return final value with offset
             dx = (At2.mPos - At1.mPos)*g
             return (At1.mPos + dx)
         
         def SingleBond():
             at2 = atoms[bond.mAtoms[1]]
-            self.mValence.append(AxialPoint_Simple(at1, at2))
+            bfod = AxialPoint_Simple(at1, at2)
+            self.mValence.append(bfod)
+            at2.mFODStruct.mValence.append(bfod)
 
+        def RandomPerpDir(dir):
+            #TODO: Remove the other RandPerp
+            b_z = -(10*dir[0] + 2*dir[1])/dir[2]
+            randperp = np.array([10,2,b_z])
+            randperp /= np.linalg.norm(randperp)
+            return randperp        
+        
         def DoubleBond(bond: Bond, atoms: List[Atom]):
             """ 
             Create the FODs representing the double bond. Currently the FOD filling is unidirectional (sequential)
@@ -174,12 +198,8 @@ class FODStructure:
             #Information
             at2 = atoms[bond.mAtoms[1]]
             axis2fod = np.ndarray(3)
+            dir = at1.mPos - at2.mPos
 
-            def RandomPerpDir():
-                r = at2.mPos - self.mAtom.mPos
-                b_z = -(10*r[0] + 2*r[1])/r[2]
-                return np.array([10,2,b_z])        
-            
             def CrossPerpDir():
                 vector_for_cross = []
                 for otherb in self.mAtom.mBonds:
@@ -194,7 +214,7 @@ class FODStructure:
                         axis2fod = CrossPerpDir()
                     elif len(self.mAtom.mBonds) == 2:
                         if self.mAtom.mBonds.index(bond) == 0:
-                            axis2fod = RandomPerpDir()
+                            axis2fod = RandomPerpDir(dir)
                         else:
                             # Cross product between atom and already-placed FODs
                             vector_for_cross = []
@@ -203,10 +223,9 @@ class FODStructure:
                             vector_for_cross -= self.mAtom.mPos
                             axis2fod = np.cross(*vector_for_cross)   
                 else:
-                    axis2fod = RandomPerpDir()
+                    axis2fod = RandomPerpDir(dir)
                     
                 #Find perpendicular unit vector and multiply by chosen radius
-                axis2fod /= np.linalg.norm(axis2fod)
                 axis2fod *= DoubleBond_Diatomic(at2)
                 
                 #Add both FODs of the Double Bond
@@ -221,6 +240,7 @@ class FODStructure:
         def AddFreeElectron(free: int):
             """
             TODO: Change conditionals as to create more concise code 
+            TODO: Create a series of variables for chosen constants, NO magic numbers
             """
             #Variables
             vector_for_cross = []
@@ -229,7 +249,7 @@ class FODStructure:
             if len(self.mAtom.mBonds) > 1 :
                 for otherb in self.mAtom.mBonds:
                     vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
-                #Find the cross term, to find the perpendicular vector
+                    #Find the cross term, to find the perpendicular vector
                 vector_for_cross -= self.mAtom.mPos
                 
                 if free == 1:
@@ -245,9 +265,11 @@ class FODStructure:
                     self.mValence.append(dr - bond2fod)
             
             elif len(self.mAtom.mBonds) == 1:
+                #Useful Information
                 at2 = atoms[self.mAtom.mBonds[0].mAtoms[1]]
                 free_dir = self.mAtom.mPos - at2.mPos
                 free_dir /= np.linalg.norm(free_dir)
+                
                 if free == 1:
                     l = GlobalData.mVert[fulle][self.mAtom.mZ]/2
                     dr = self.mAtom.mPos + free_dir*l/np.tan(np.deg2rad(54.735))
@@ -266,22 +288,81 @@ class FODStructure:
                     dr = self.mAtom.mPos + free_dir*np.linalg.norm(axis2fod)/np.tan(np.deg2rad(54.735))
                     self.mValence.append(dr + axis2fod)
                     self.mValence.append(dr - axis2fod)
+                elif free == 3:
+                    if self.mAtom.mZ < 10:
+                        #Create the starting FOD. Begin with the vertical component
+                        R_f = sqrt(3/8)*np.linalg.norm(at1.mPos - at1.mFODStruct.mValence[0])
+                    elif self.mAtom.mZ <=18:                                                            
+                        R_f = np.linalg.norm(at1.mPos - at1.mFODStruct.mValence[0])
+                    # Begin First FOD 
+                    axis2fod = RandomPerpDir(free_dir)
+                    axis2fod *= np.sin(np.deg2rad(70.5288))*R_f 
+                    #Create the horizontal component, parallel to the bonding axis
+                    horizontal = np.cos(np.deg2rad(70.5288))*R_f*free_dir
+                    #Add vectors, and rotate to create equilateral triangle
+                    dr = horizontal + axis2fod
+                    #Create rotations and rotated FODs
+                    rot1 = rot.Rotation.from_rotvec((2*np.pi/3)*free_dir)
+                    fod1 = np.matmul(rot1.as_matrix(),dr)
+                    rot2 = rot.Rotation.from_rotvec(-(2*np.pi/3)*free_dir)
+                    fod2 = np.matmul(rot2.as_matrix(),dr)
+
+                    #Translate to the atom of interest, and add to Valence 
+                    self.mValence.append(at1.mPos + dr)
+                    self.mValence.append(at1.mPos + fod1)
+                    self.mValence.append(at1.mPos + fod2)
 
         def TripleBond(at2: Atom):
+            """
+            #TODO: Make a helper function for triple FOD placement
+            """
+            #Data
+            if at1.mPeriod < at2.mPeriod:
+                fugal = at2.mPos - at1.mPos
+                atom = at1
+            elif at1.mPeriod > at2.mPeriod:
+                fugal = at1.mPos - at2.mPos
+                atom = at2
+            elif at1.mZ > at2.mZ:
+                    fugal = at2.mPos - at1.mPos
+                    atom = at1
+            elif at1.mZ < at2.mZ:
+                    fugal = at1.mPos - at2.mPos
+                    atom = at1
+            elif at1.mZ == at2.mZ:
+                pass
+
+            fugal /= np.linalg.norm(fugal)  
+            c = np.linalg.norm(fugal) # Distance
+            elecs = GlobalData.GetFullElecCount(atom.mGroup, atom.mPeriod)
+            rad = GlobalData.mRadii[elecs][atom.mZ] #Radius
+            a = GlobalData.mVert[elecs][atom.mZ] #Edge
+            
+            #Place FODs
             if at1.mZ == at2.mZ:        
-                c = np.linalg.norm(at2.mPos - at1.mPos)
-                elecs = GlobalData.GetFullElecCount(at1.mGroup, at1.mPeriod)
-                rad = GlobalData.mRadii[elecs][at1.mZ]
-                print(rad)
                 return sqrt(rad**2 - ((c/2)**2))
             else:
-                l = np.linalg.norm(AxialPoint_Simple(at1, at2))
-                atoom = at1 if at1.mZ < at2.mZ else at2
-                elecs = GlobalData.GetFullElecCount(atoom.mGroup, atoom.mPeriod)
-                rad = GlobalData.mRadii[elecs][atoom.mZ]
-                #Do an inscrbed triangle within the Atom-BondFOD-Atom triangle
-                return sqrt(rad**2 - ((l)**2))
-            
+                equilat_r =a/sqrt(3) 
+                theta = np.arcsin((a/2)/rad) if at1.mPeriod == 2 & at2.mPeriod == 2 else np.arcsin(equilat_r/rad) 
+                dr = fugal*rad*np.cos(theta) + RandomPerpDir(fugal)*rad*np.sin(theta)
+                #Create rotations and rotated FODs
+                rot1 = rot.Rotation.from_rotvec((2*np.pi/3)*fugal)
+                fod1 = np.matmul(rot1.as_matrix(),dr)
+                rot2 = rot.Rotation.from_rotvec(-(2*np.pi/3)*fugal)
+                fod2 = np.matmul(rot2.as_matrix(),dr)
+                self.mValence.append(atom.mPos + dr)
+                self.mValence.append(atom.mPos + fod1)
+                self.mValence.append(atom.mPos + fod2)
+
+        def AddCoreElectrons():
+            #Count core electrons and
+            core_elec = self.mAtom.mZ - self.mAtom.mValCount
+            if core_elec != 0:
+                for shell in GlobalData.mGeo_Ladder[core_elec]:
+                    if shell == 'point':
+                        self.mCore.append(self.Point(self.mAtom))
+                    elif shell == 'tetra':
+                        self.mCore.append(self.Tetrahedron(10,self.mAtom))
 
         #Prepare the valence shell first, since it will help determine the
         # orientation of the inner shells
@@ -293,8 +374,7 @@ class FODStructure:
                     elif bond.mOrder == 2:
                         DoubleBond(bond, atoms)
                     elif bond.mOrder == 3:
-                        TripleBond(bond.mAtoms[1])
-                        pass            
+                        TripleBond(atoms[bond.mAtoms[1]])
             #Add Free-Electrons
             if self.mAtom.mFreePairs == 2:
                 if self.mAtom.mSteric >= 3:
@@ -302,18 +382,11 @@ class FODStructure:
             elif self.mAtom.mFreePairs == 1:
                 if self.mAtom.mSteric >= 2:
                     AddFreeElectron(1)
-                    pass
-            
-        #Count core electrons and
-        core_elec = self.mAtom.mZ - self.mAtom.mValCount
-        if core_elec != 0:
-            for shell in GlobalData.mGeo_Ladder[core_elec]:
-                if shell == 'point':
-                    self.mCore.append(self.Point())
-                elif shell == 'tetra':
-                    self.mCore.append(self.Tetrahedron())
+            elif self.mAtom.mFreePairs == 3:
+                AddFreeElectron(3)
         
-
+        AddCoreElectrons()
+             
     def FinalizeFODs(self):
         """
         Add all FODs in the FODStructure, to the atom, so that they can be
@@ -321,7 +394,7 @@ class FODStructure:
         """
         #Add the core FODs
         for shell in self.mCore:
-            shell.mfods *= 0.2
+            #shell.mfods *= 0.2
             shell.mfods += self.mAtom.mPos   
             if self.mfods == []:
                 self.mfods = [shell.mfods]
@@ -341,15 +414,16 @@ class FODStructure:
         pass
     
     class FODShell:
-        def __init__(self, shape, fods):
+        def __init__(self, shape, fods, owner: Atom):
+            self.mOwner = owner
             self.mShape = shape 
             self.mfods = np.array(fods)
         def __str__(self):
             return self.mShape
 
     class Point(FODShell):
-        def __init__(self):
-            super().__init__('point', [0.0,0.0,0.0])
+        def __init__(self, owner: Atom):
+            super().__init__('point', [0.0,0.0,0.0], owner)
 
     class Tetrahedron(FODShell):
         """
@@ -357,9 +431,9 @@ class FODStructure:
         Roadmap: There will  be different functions to create compound transformations of FODs (e.g. the base, or peak
         of the tetrahedron), and to rotate them in the proper direction as well.
         """
-        def __init__(self):
-            super().__init__('tetra', GlobalData.mTetraGeo)
-
+        def __init__(self, core_amount, owner: Atom):
+            super().__init__('tetra', GlobalData.mTetraGeo, owner)
+            self.mfods *= GlobalData.mRadii[core_amount][self.mOwner.mZ]
         #Class Methods
         def CreateTetra(self):
             """

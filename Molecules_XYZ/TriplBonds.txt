@@ -1,0 +1,6 @@
+C2H2_in
+C4H5N_in
+C5H6_in
+SiO_in
+P2_in
+HCN_in
