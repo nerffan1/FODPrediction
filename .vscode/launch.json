@@ -9,7 +9,7 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "args": "Molecules_XYZ/P2_in",
+            "args": "Molecules_XYZ/C5H6_in",
             "console": "integratedTerminal",
             "justMyCode": true
         }

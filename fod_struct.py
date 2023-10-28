@@ -312,6 +312,26 @@ class FODStructure:
                     self.mValence.append(at1.mPos + fod1)
                     self.mValence.append(at1.mPos + fod2)
 
+        def PlaceFODs_Triple(fugal: np.ndarray, a: float, rad: float, at2: Atom, c: float):
+            """ This function create an FOD at a certain distance, based of a and rad,
+            which are quantities assumed to dominate the interaction.
+            """
+            equilat_r =a/sqrt(3)
+            if at1.mZ == at2.mZ:
+                if at1.mPeriod ==2 & at2.mPeriod == 2:
+                    theta = np.arccos((c/2)/rad)
+                elif at1.mPeriod > 2 & at2.mPeriod > 2:
+                    theta = np.arctan(rad/(c/2))
+            else:
+                theta = np.arcsin(equilat_r/rad) 
+            dr = fugal*rad*np.cos(theta) + RandomPerpDir(fugal)*rad*np.sin(theta)
+            #Create rotations and rotated FODs
+            rot1 = rot.Rotation.from_rotvec((2*np.pi/3)*fugal)
+            fod1 = np.matmul(rot1.as_matrix(),dr)
+            rot2 = rot.Rotation.from_rotvec(-(2*np.pi/3)*fugal)
+            fod2 = np.matmul(rot2.as_matrix(),dr)
+            return (dr,fod1,fod2)
+
         def TripleBond(at2: Atom):
             """
             #TODO: Make a helper function for triple FOD placement
@@ -326,33 +346,20 @@ class FODStructure:
             elif at1.mZ > at2.mZ:
                     fugal = at2.mPos - at1.mPos
                     atom = at1
-            elif at1.mZ < at2.mZ:
+            elif at1.mZ <= at2.mZ:
                     fugal = at1.mPos - at2.mPos
-                    atom = at1
-            elif at1.mZ == at2.mZ:
-                pass
-
-            fugal /= np.linalg.norm(fugal)  
+                    atom = at2
+            # Variables
             c = np.linalg.norm(fugal) # Distance
+            fugal /= np.linalg.norm(fugal)  
             elecs = GlobalData.GetFullElecCount(atom.mGroup, atom.mPeriod)
             rad = GlobalData.mRadii[elecs][atom.mZ] #Radius
             a = GlobalData.mVert[elecs][atom.mZ] #Edge
-            
             #Place FODs
-            if at1.mZ == at2.mZ:        
-                return sqrt(rad**2 - ((c/2)**2))
-            else:
-                equilat_r =a/sqrt(3) 
-                theta = np.arcsin((a/2)/rad) if at1.mPeriod == 2 & at2.mPeriod == 2 else np.arcsin(equilat_r/rad) 
-                dr = fugal*rad*np.cos(theta) + RandomPerpDir(fugal)*rad*np.sin(theta)
-                #Create rotations and rotated FODs
-                rot1 = rot.Rotation.from_rotvec((2*np.pi/3)*fugal)
-                fod1 = np.matmul(rot1.as_matrix(),dr)
-                rot2 = rot.Rotation.from_rotvec(-(2*np.pi/3)*fugal)
-                fod2 = np.matmul(rot2.as_matrix(),dr)
-                self.mValence.append(atom.mPos + dr)
-                self.mValence.append(atom.mPos + fod1)
-                self.mValence.append(atom.mPos + fod2)
+            tfodPos = PlaceFODs_Triple(fugal, a, rad, at2, c)
+            self.mValence.append(atom.mPos + tfodPos[0])
+            self.mValence.append(atom.mPos + + tfodPos[1])
+            self.mValence.append(atom.mPos + + tfodPos[2])
 
         def AddCoreElectrons():
             #Count core electrons and
