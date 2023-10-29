@@ -96,6 +96,10 @@ class FODStructure:
         self.mValence = [] #A list of FODs
         self.mfods = [] #All Finalized FODs
         self.mLastBond = 0
+    
+    # Setter Functions
+    def AddValFOD(self, fod: np.ndarray):
+        self.mValence.append(fod)
 
     def PrepareShells(self, atoms: List[Atom]):
         """
@@ -166,10 +170,14 @@ class FODStructure:
 
         def RandomPerpDir(dir):
             #TODO: Remove the other RandPerp
-            b_z = -(10*dir[0] + 2*dir[1])/dir[2]
-            randperp = np.array([10,2,b_z])
-            randperp /= np.linalg.norm(randperp)
-            return randperp        
+            if dir[0] == 0: return np.array([1,0,0])
+            elif dir[1] == 0: return np.array([0,1,0])
+            elif dir[2] == 0: return np.array([0,0,1])
+            else:
+                b_z = -(10*dir[0] + 2*dir[1])/dir[2]
+                randperp = np.array([10,2,b_z])
+                randperp /= np.linalg.norm(randperp)
+                return randperp        
         
         def DoubleBond(bond: Bond, atoms: List[Atom]):
             """ 
@@ -185,7 +193,6 @@ class FODStructure:
                     c = np.linalg.norm(at2.mPos - at1.mPos)
                     elecs = GlobalData.GetFullElecCount(at1.mGroup, at1.mPeriod)
                     rad = GlobalData.mRadii[elecs][at1.mZ]
-                    print(rad)
                     return sqrt(rad**2 - ((c/2)**2))
                 else:
                     l = np.linalg.norm(AxialPoint_Simple(at1, at2))
@@ -206,7 +213,8 @@ class FODStructure:
                     if otherb != bond:
                         vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
                 vector_for_cross -= self.mAtom.mPos
-                return np.cross(*vector_for_cross)
+                vec = np.cross(*vector_for_cross)
+                return vec/np.linalg.norm(vec)
                 
             if GlobalData.GetFullElecCount(self.mAtom.mGroup,self.mAtom.mPeriod) <= 18:
                 if self.mAtom.mFreePairs == 0:
@@ -232,10 +240,10 @@ class FODStructure:
                 midpoint = AxialPoint_Simple(at1, at2)
 
                 #Add FODs
-                self.mValence.append(midpoint + axis2fod)
-                self.mValence.append(midpoint - axis2fod)
-                at2.mFODStruct.mValence.append(midpoint + axis2fod)
-                at2.mFODStruct.mValence.append(midpoint - axis2fod)
+                self.AddValFOD(midpoint + axis2fod)
+                self.AddValFOD(midpoint - axis2fod)
+                at2.mFODStruct.AddValFOD(midpoint + axis2fod)
+                at2.mFODStruct.AddValFOD(midpoint - axis2fod)
     
         def AddFreeElectron(free: int):
             """
@@ -321,9 +329,9 @@ class FODStructure:
                 if at1.mPeriod ==2 & at2.mPeriod == 2:
                     theta = np.arccos((c/2)/rad)
                 elif at1.mPeriod > 2 & at2.mPeriod > 2:
-                    theta = np.arctan(rad/(c/2))
+                    theta = np.arctan(rad/(c/2)) 
             else:
-                theta = np.arcsin(equilat_r/rad) 
+                theta = np.arcsin((a/2)/rad) 
             dr = fugal*rad*np.cos(theta) + RandomPerpDir(fugal)*rad*np.sin(theta)
             #Create rotations and rotated FODs
             rot1 = rot.Rotation.from_rotvec((2*np.pi/3)*fugal)
@@ -357,9 +365,9 @@ class FODStructure:
             a = GlobalData.mVert[elecs][atom.mZ] #Edge
             #Place FODs
             tfodPos = PlaceFODs_Triple(fugal, a, rad, at2, c)
-            self.mValence.append(atom.mPos + tfodPos[0])
-            self.mValence.append(atom.mPos + + tfodPos[1])
-            self.mValence.append(atom.mPos + + tfodPos[2])
+            self.AddValFOD(atom.mPos + tfodPos[0])
+            self.AddValFOD(atom.mPos + tfodPos[1])
+            self.AddValFOD(atom.mPos + tfodPos[2])
 
         def AddCoreElectrons():
             #Count core electrons and
@@ -412,13 +420,6 @@ class FODStructure:
             self.mfods = self.mValence  
         elif self.mValence != []:
             self.mfods = np.vstack((self.mfods,self.mValence))
-
-    def AddFOD(self):
-        """
-        Create a function that adds FOD information to the FOD Structure
-        """
-
-        pass
     
     class FODShell:
         def __init__(self, shape, fods, owner: Atom):
