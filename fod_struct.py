@@ -98,8 +98,26 @@ class FODStructure:
         self.mLastBond = 0
     
     # Setter Functions
-    def AddValFOD(self, fod: np.ndarray):
+    def AddValFOD(self, fod: np.ndarray, at2=False,finalize=False):
+        """
+        This function adds the FODs to the valence of the current atom's FOD Structure.
+        It also accepts a secondary atom, at2, in order to add the FOD to its valence. The
+        Finalize parameter is True only for the first atom that is writing the FODs; by finalizing
+        we mean that the FOD is added to the list of overall FODs.
+        """
+        # Add to current valence
         self.mValence.append(fod)
+        
+        #Add to bonded atom valence, if passed
+        if at2 != False:
+             at2.mFODStruct.AddValFOD(fod)
+
+        #Add to the final list of atoms, without duplicating
+        if finalize:
+            if self.mfods == []:
+                self.mfods = fod  
+            else:
+                self.mfods = np.vstack((self.mfods,fod))
 
     def PrepareShells(self, atoms: List[Atom]):
         """
@@ -116,7 +134,6 @@ class FODStructure:
         TODO: GlobalData.GetFullElecCount() Can be precalculated ahead of time and placed as a member vatrable
         """
         at1 = self.mAtom
-        dir = []
         def AxialPoint_Simple(At1: Atom, At2: Atom):
             """
             Return FOD location for a Single FOD representing a Single Bond.
@@ -162,11 +179,9 @@ class FODStructure:
             dx = (At2.mPos - At1.mPos)*g
             return (At1.mPos + dx)
         
-        def SingleBond():
-            at2 = atoms[bond.mAtoms[1]]
+        def SingleBond(at2: Atom):
             bfod = AxialPoint_Simple(at1, at2)
-            self.mValence.append(bfod)
-            at2.mFODStruct.mValence.append(bfod)
+            self.AddValFOD(bfod, at2, True)
 
         def RandomPerpDir(dir):
             #TODO: Remove the other RandPerp
@@ -179,7 +194,7 @@ class FODStructure:
                 randperp /= np.linalg.norm(randperp)
                 return randperp        
         
-        def DoubleBond(bond: Bond, atoms: List[Atom]):
+        def DoubleBond(at2: Atom):
             """ 
             Create the FODs representing the double bond. Currently the FOD filling is unidirectional (sequential)
             and  does not account for the next atom in the iteration to see if we can further accomodate the bonding FODs 
@@ -203,7 +218,6 @@ class FODStructure:
                     return sqrt(rad**2 - ((l)**2))
                             
             #Information
-            at2 = atoms[bond.mAtoms[1]]
             axis2fod = np.ndarray(3)
             dir = at1.mPos - at2.mPos
 
@@ -240,10 +254,8 @@ class FODStructure:
                 midpoint = AxialPoint_Simple(at1, at2)
 
                 #Add FODs
-                self.AddValFOD(midpoint + axis2fod)
-                self.AddValFOD(midpoint - axis2fod)
-                at2.mFODStruct.AddValFOD(midpoint + axis2fod)
-                at2.mFODStruct.AddValFOD(midpoint - axis2fod)
+                self.AddValFOD(midpoint + axis2fod,at2,True)
+                self.AddValFOD(midpoint - axis2fod,at2,True)
     
         def AddFreeElectron(free: int):
             """
@@ -266,11 +278,12 @@ class FODStructure:
                     dr = self.mAtom.mPos - free_dir*GlobalData.mRadii[fulle][self.mAtom.mZ]
                     self.mValence.append(dr)
                 elif free == 2:
-                    bond2fod = np.cross(*vector_for_cross)*.3
+                    bond2fod = np.cross(*vector_for_cross)
+                    bond2fod /= np.linalg.norm(bond2fod)
                     #Add both FODs of the Double Bond
                     dr = self.mAtom.mPos - np.sum(vector_for_cross, axis=0)*.2
-                    self.mValence.append(dr + bond2fod)
-                    self.mValence.append(dr - bond2fod)
+                    self.AddValFOD(dr + bond2fod,False,True)
+                    self.AddValFOD(dr - bond2fod,False,True) #TODO: Can this be condensed with the code below?
             
             elif len(self.mAtom.mBonds) == 1:
                 #Useful Information
@@ -279,9 +292,9 @@ class FODStructure:
                 free_dir /= np.linalg.norm(free_dir)
                 
                 if free == 1:
-                    l = GlobalData.mVert[fulle][self.mAtom.mZ]/2
-                    dr = self.mAtom.mPos + free_dir*l/np.tan(np.deg2rad(54.735))
-                    self.mValence.append(dr)
+                    l = GlobalData.mVert[fulle][self.mAtom.mZ]
+                    dr = self.mAtom.mPos + free_dir*l/sqrt(8) #Place at midsphere distance
+                    self.AddValFOD(dr,False,True)
                 elif free == 2:
                     #Similar to DoubleBond placement
                     #Get direction from axis
@@ -294,8 +307,8 @@ class FODStructure:
                     #Add both FODs of the Double Bond
                     axis2fod *= GlobalData.mVert[fulle][self.mAtom.mZ]/2
                     dr = self.mAtom.mPos + free_dir*np.linalg.norm(axis2fod)/np.tan(np.deg2rad(54.735))
-                    self.mValence.append(dr + axis2fod)
-                    self.mValence.append(dr - axis2fod)
+                    self.AddValFOD(dr + axis2fod,False,True)
+                    self.AddValFOD(dr - axis2fod,False,True)
                 elif free == 3:
                     if self.mAtom.mZ < 10:
                         #Create the starting FOD. Begin with the vertical component
@@ -342,7 +355,7 @@ class FODStructure:
 
         def TripleBond(at2: Atom):
             """
-            #TODO: Make a helper function for triple FOD placement
+            #TODO: Create a helper funtion for conditional statements
             """
             #Data
             if at1.mPeriod < at2.mPeriod:
@@ -365,9 +378,9 @@ class FODStructure:
             a = GlobalData.mVert[elecs][atom.mZ] #Edge
             #Place FODs
             tfodPos = PlaceFODs_Triple(fugal, a, rad, at2, c)
-            self.AddValFOD(atom.mPos + tfodPos[0])
-            self.AddValFOD(atom.mPos + tfodPos[1])
-            self.AddValFOD(atom.mPos + tfodPos[2])
+            self.AddValFOD(atom.mPos + tfodPos[0],at2,True)
+            self.AddValFOD(atom.mPos + tfodPos[1],at2,True)
+            self.AddValFOD(atom.mPos + tfodPos[2],at2,True)
 
         def AddCoreElectrons():
             #Count core electrons and
@@ -385,9 +398,9 @@ class FODStructure:
             for bond in self.mAtom.mBonds:
                 if bond.mAtoms[1] > bond.mAtoms[0]:
                     if bond.mOrder == 1:
-                        SingleBond()
+                        SingleBond(atoms[bond.mAtoms[1]])
                     elif bond.mOrder == 2:
-                        DoubleBond(bond, atoms)
+                        DoubleBond(atoms[bond.mAtoms[1]])
                     elif bond.mOrder == 3:
                         TripleBond(atoms[bond.mAtoms[1]])
             #Add Free-Electrons
@@ -409,17 +422,11 @@ class FODStructure:
         """
         #Add the core FODs
         for shell in self.mCore:
-            #shell.mfods *= 0.2
             shell.mfods += self.mAtom.mPos   
             if self.mfods == []:
                 self.mfods = [shell.mfods]
             else:
                 self.mfods = np.vstack((self.mfods,shell.mfods))  ###HOW TO concatenate FODs, easily
-        #Add the Valence FODs
-        if self.mfods == []:
-            self.mfods = self.mValence  
-        elif self.mValence != []:
-            self.mfods = np.vstack((self.mfods,self.mValence))
     
     class FODShell:
         def __init__(self, shape, fods, owner: Atom):
