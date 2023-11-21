@@ -64,11 +64,15 @@ class GlobalData:
             elif period == 3: return 12
             elif period == 4: return 20
             elif period == 5: return 38
-        elif group > 12 and group < 18: 
-            if period == 2: return 10
+            elif period == 6: return 56
+            else: -1 
+        elif group > 2 and group <= 18: 
+            if period == 1: return 2
+            elif period == 2: return 10
             elif period == 3 : return 18
             elif period == 4: return 36    
-            elif period == 5: return 54    
+            elif period == 5: return 54
+            elif period == 6: return 86
 
     #Degugging tests
     def _debug_samplenames():
@@ -80,6 +84,7 @@ class GlobalData:
     mElementInfo = []
     mElemNames = []
     mClosedGroups = [2,12,18]
+    mShellCount = [0,2,8,8,18,18]
 
     # The following ladder is based of various monoatomic calculations.
     #Think of a scheme that places the beginning of a 
@@ -163,7 +168,7 @@ class GlobalData:
             9: 1.0005509960170376,
             10: 1.0005509960170376,
             11: 0.8174598158123096
-        },
+        },  
         18: {
             13: 4.173993393062307,
             14: 2.5660512319934154,

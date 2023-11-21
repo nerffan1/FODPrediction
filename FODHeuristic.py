@@ -12,7 +12,7 @@ class Molecule:
     def __init__(self, xyzfile) -> None:
         self.mFile = xyzfile
         self.mComment = ""
-        self.mAtoms = []
+        self.mAtoms: List[Atom] = []
         self.mBonds = []
         self.__LoadXYZ()
         self.__RD_Bonds()
@@ -87,6 +87,7 @@ class Molecule:
         """
         mol = Chem.MolFromXYZFile(self.mFile) 
         rdDetermineBonds.DetermineConnectivity(mol)
+        print(self.mComment)
         rdDetermineBonds.DetermineBondOrders(mol, charge=0)
         for bond in mol.GetBonds():
             atom1 = bond.GetBeginAtomIdx()   
@@ -123,9 +124,7 @@ class Molecule:
             print(f'Valency: {atom.mValCount}')
             print(f'Steric Number: {atom.mSteric}')
             print(f'Free Pairs: {atom.mFreePairs}')
-            print("Shell (Core) Structure: ")
-            for shell in atom.mFODStruct.mCore:
-                print(shell)
+            print("Shell (Core) Structure:",*atom.mFODStruct.mCore)
             
             print('BondedAtoms: ')
             for b in atom.mBonds:

@@ -1,3 +1,4 @@
 {
-    "terminal.integrated.tabs.defaultColor": null
+    "terminal.integrated.tabs.defaultColor": null,
+    "python.languageServer": "Pylance"
 }

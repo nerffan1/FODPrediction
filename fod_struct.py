@@ -5,6 +5,7 @@
 #  -  Add Tetrahedra class and several attributes/methods to manipulate them
 #  - In far future, somehow implement the triaugmented triangular prism that corresponds to sp3d5 ( 9 FODs, 18 electrons) 
 #Author: Angel-Emilio Villegas S.
+from ast import Global
 from  globaldata import GlobalData
 import math3d
 import numpy as np
@@ -44,11 +45,23 @@ class Atom:
     def _AddBond(self, atom2: int, order: int):
         self.mBonds.append(Bond(self.mI, atom2,order))
 
-    def CalcSteric(self) -> None:
-        self.mSteric = self.mValCount
-        for bond in self.mBonds:
-            self.mSteric += bond.mOrder 
+    def CalcSteric_test(self) -> None:
+        """
+        TODO: Need to account for systems where the valence electrons + bonding FODs
+        """
         self.mFreePairs = int((self.mSteric - np.sum([2*x.mOrder for x in self.mBonds ]))/2)
+        self.mSteric = self.mFreePairs + len(self.mBonds)
+    
+    def CalcSteric(self) -> None:
+        """
+        This function assumes that the system at hand only contains Closed Shell calculations.
+        TODO: Need to account for systems where the valence electrons + bonding FODs
+        """
+        #Electrons involved in the Bond
+        bondelec = np.sum([2*bond.mOrder for bond in self.mBonds])
+        # The difference between the total electrons and the number of electrons that fill the shell
+        self.mCharge = (self.mZ + bondelec) - GlobalData.GetFullElecCount(self.mGroup, self.mPeriod)
+        self.mFreePairs = int(GlobalData.mShellCount[self.mPeriod] - bondelec)/2
         self.mSteric = self.mFreePairs + len(self.mBonds)
     
     def _FindValence(self):
@@ -71,11 +84,12 @@ class Atom:
         Check that the atom has a closed shell.
         Future: Add a variable that saves the info so that looping every time
         this is called (if called more than once) is unnecesary
+        TODO: Alternatively, just check the amount of electrons
         """
         #Determine How many electrons are needed to fill shell
         for ClGrp in GlobalData.mClosedGroups:
             if self.mGroup < ClGrp:
-                checkshell = ClGrp - self.mGroup
+                checkshell = ClGrp - self.mGroup + self.mCharge
                 break 
         for bond in self.mBonds:
             checkshell -= bond.mOrder
@@ -185,9 +199,9 @@ class FODStructure:
 
         def RandomPerpDir(dir):
             #TODO: Remove the other RandPerp
-            if dir[0] == 0: return np.array([1,0,0])
-            elif dir[1] == 0: return np.array([0,1,0])
-            elif dir[2] == 0: return np.array([0,0,1])
+            if dir[0] == 0: return np.array([1.0,0.0,0.0])
+            elif dir[1] == 0: return np.array([0.0,1.0,0.0])
+            elif dir[2] == 0: return np.array([0.0,0.0,1.0])
             else:
                 b_z = -(10*dir[0] + 2*dir[1])/dir[2]
                 randperp = np.array([10,2,b_z])
@@ -265,7 +279,7 @@ class FODStructure:
             #Variables
             vector_for_cross = []
             fulle = GlobalData.GetFullElecCount(self.mAtom.mGroup, self.mAtom.mPeriod)
-            vector_for_cross = [fod for fod in self.mValence] - self.mAtom.mPos
+            vector_for_cross = self.mAtom.mPos - [fod for fod in self.mValence]
                 
             if len(self.mAtom.mBonds) == 1:
                 #Useful Information
@@ -277,19 +291,26 @@ class FODStructure:
                 if len(self.mAtom.mBonds) > 1 :        
                     free_dir = np.sum(vector_for_cross, axis=0)
                     free_dir /= np.linalg.norm(free_dir)
-                    dr = - free_dir*GlobalData.mRadii[fulle][self.mAtom.mZ]
+                    dr = free_dir*GlobalData.mRadii[fulle][self.mAtom.mZ]
                 elif len(self.mAtom.mBonds) == 1:
                     l = GlobalData.mVert[fulle][self.mAtom.mZ]
-                    dr = free_dir*l/sqrt(8) #Place at midsphere distance    
+                    if (self.mAtom.mPeriod < 3):
+                        dr = free_dir*l/sqrt(8) #Place at midsphere distance
+                    else:
+                        dr = free_dir*GlobalData.mRadii[fulle][self.mAtom.mZ]
                 self.AddValFOD(self.mAtom.mPos+dr,False,True)
 
             elif free == 2:
                 #Direction away from atom, on plane of other bonds, or neighboring atoms
                 axis2fod = np.cross(*vector_for_cross)
+                axis2fod /= np.linalg.norm(axis2fod)
 
                 if len(self.mAtom.mBonds) > 1 :
-                    axis2fod /= np.linalg.norm(axis2fod)
-                    dr =  - np.sum(vector_for_cross, axis=0)*.2
+                    axis2fod *= GlobalData.mVert[fulle][self.mAtom.mZ]/2
+                    dr =  np.sum(vector_for_cross, axis=0)
+                    norm = np.array([np.linalg.norm(x) for x in vector_for_cross])
+                    dr =  np.sum(vector_for_cross/norm.reshape((2,1)),axis=0)
+                    dr *= np.linalg.norm(axis2fod)/np.tan(np.deg2rad(70.5288))
                 elif len(self.mAtom.mBonds) == 1:
                     #Add both FODs of the Double Bond
                     axis2fod *= GlobalData.mVert[fulle][self.mAtom.mZ]/2
@@ -302,7 +323,7 @@ class FODStructure:
                 if self.mAtom.mZ < 10:
                     #Create the starting FOD. Begin with the vertical component
                     R_f = sqrt(3/8)*np.linalg.norm(at1.mPos - at1.mFODStruct.mValence[0])
-                elif self.mAtom.mZ <=18:                                                            
+                elif at1.mPeriod > 2:                                                            
                     R_f = np.linalg.norm(at1.mPos - at1.mFODStruct.mValence[0])
                 # Begin First FOD 
                 axis2fod = RandomPerpDir(free_dir)
@@ -318,9 +339,9 @@ class FODStructure:
                 fod2 = np.matmul(rot2.as_matrix(),dr)
 
                 #Translate to the atom of interest, and add to Valence 
-                self.mValence.append(at1.mPos + dr)
-                self.mValence.append(at1.mPos + fod1)
-                self.mValence.append(at1.mPos + fod2)
+                self.AddValFOD(at1.mPos + dr,False,True)
+                self.AddValFOD(at1.mPos + fod1,False,True)
+                self.AddValFOD(at1.mPos + fod2,False,True)
 
         def PlaceFODs_Triple(fugal: np.ndarray, a: float, rad: float, at2: Atom, c: float):
             """ This function create an FOD at a certain distance, based of a and rad,
