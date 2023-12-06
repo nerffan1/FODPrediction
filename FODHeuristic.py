@@ -1,6 +1,7 @@
 #RDKit for BondPrediction
 from rdkit import Chem
 from rdkit.Chem import rdDetermineBonds
+from rdkit.Chem import rdmolops
 from rdkit.Chem import AllChem
 
 #Custom Made library
@@ -89,6 +90,7 @@ class Molecule:
         rdDetermineBonds.DetermineConnectivity(mol)
         print(self.mComment)
         rdDetermineBonds.DetermineBondOrders(mol, charge=0)
+        rdmolops.Kekulize(mol)
         for bond in mol.GetBonds():
             atom1 = bond.GetBeginAtomIdx()   
             atom2 = bond.GetEndAtomIdx() 

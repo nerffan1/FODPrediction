@@ -15,7 +15,7 @@ from numpy.linalg import inv, det
 from scipy.spatial.transform import rotation as rot
 import csv
 
-#FOD STRUCTURE
+################# FOD STRUCTURE #################
 
 class Bond:
     def __init__(self,start,end,order):
@@ -128,7 +128,7 @@ class FODStructure:
 
         #Add to the final list of atoms, without duplicating
         if finalize:
-            if self.mfods == []:
+            if len(self.mfods) == 0:
                 self.mfods = fod  
             else:
                 self.mfods = np.vstack((self.mfods,fod))
@@ -216,6 +216,8 @@ class FODStructure:
             def DoubleBond_Diatomic(at2: Atom):
                 """
                 Return radial distance from interatomic (bonding) axis. 
+                
+                For heterogenous atoms....
                 """
                 # Radius Logic
                 if at1.mZ == at2.mZ:
@@ -224,12 +226,11 @@ class FODStructure:
                     rad = GlobalData.mRadii[elecs][at1.mZ]
                     return sqrt(rad**2 - ((c/2)**2))
                 else:
-                    l = np.linalg.norm(AxialPoint_Simple(at1, at2))
-                    atoom = at1 if at1.mZ < at2.mZ else at2
+                    atoom, fugal = DominantAtom(at1, at2)
                     elecs = GlobalData.GetFullElecCount(atoom.mGroup, atoom.mPeriod)
-                    rad = GlobalData.mRadii[elecs][atoom.mZ]
+                    rad = GlobalData.mVert[elecs][atoom.mZ]
                     #Do an inscrbed triangle within the Atom-BondFOD-Atom triangle
-                    return sqrt(rad**2 - ((l)**2))
+                    return rad/2
                             
             #Information
             axis2fod = np.ndarray(3)
@@ -304,20 +305,26 @@ class FODStructure:
                 #Direction away from atom, on plane of other bonds, or neighboring atoms
                 axis2fod = np.cross(*vector_for_cross)
                 axis2fod /= np.linalg.norm(axis2fod)
+                #Get angle to atoms of FFODs (ffod-atom-ffod)
+                ab = np.dot(*vector_for_cross)
+                ab_abs =  np.linalg.norm(vector_for_cross,axis=1)
+                theta = np.deg2rad(220) - np.arccos(ab/(ab_abs[0]*ab_abs[1]))
+                theta /= 2
 
-                if len(self.mAtom.mBonds) > 1 :
-                    axis2fod *= GlobalData.mVert[fulle][self.mAtom.mZ]/2
-                    dr =  np.sum(vector_for_cross, axis=0)
-                    norm = np.array([np.linalg.norm(x) for x in vector_for_cross])
-                    dr =  np.sum(vector_for_cross/norm.reshape((2,1)),axis=0)
-                    dr *= np.linalg.norm(axis2fod)/np.tan(np.deg2rad(70.5288))
-                elif len(self.mAtom.mBonds) == 1:
+                if len(self.mValence) == 2: #Might be different for FODs or for number of bonds
+                    #Determine the free direction
+                    dxy  = AddNormals(vector_for_cross)
+                    #TODO: Must determine logic to choose distance, based of bonding as well 
+                    R = np.linalg.norm(vector_for_cross[0]) # Remember these are the atom-BFOD distances
+                    dxy *= R*np.cos(theta)
+                    axis2fod *= R*np.sin(theta)
+                elif len(self.mValence) == 1:
                     #Add both FODs of the Double Bond
                     axis2fod *= GlobalData.mVert[fulle][self.mAtom.mZ]/2
-                    dr = self.mAtom.mPos + free_dir*np.linalg.norm(axis2fod)/np.tan(np.deg2rad(54.735))
+                    dxy = self.mAtom.mPos + free_dir*np.linalg.norm(axis2fod)/np.tan(np.deg2rad(54.735))
                 
-                self.AddValFOD(self.mAtom.mPos + dr + axis2fod,False,True)
-                self.AddValFOD(self.mAtom.mPos + dr - axis2fod,False,True)
+                self.AddValFOD(self.mAtom.mPos + dxy + axis2fod,False,True)
+                self.AddValFOD(self.mAtom.mPos + dxy - axis2fod,False,True)
 
             elif free == 3:
                 if self.mAtom.mZ < 10:
@@ -367,19 +374,8 @@ class FODStructure:
             """
             #TODO: Create a helper funtion for conditional statements
             """
-            #Data
-            if at1.mPeriod < at2.mPeriod:
-                fugal = at2.mPos - at1.mPos
-                atom = at1
-            elif at1.mPeriod > at2.mPeriod:
-                fugal = at1.mPos - at2.mPos
-                atom = at2
-            elif at1.mZ > at2.mZ:
-                    fugal = at2.mPos - at1.mPos
-                    atom = at1
-            elif at1.mZ <= at2.mZ:
-                    fugal = at1.mPos - at2.mPos
-                    atom = at2
+            #Determine dominant atom and direction
+            atom, fugal = DominantAtom(at1,at2)
             # Variables
             c = np.linalg.norm(fugal) # Distance
             fugal /= np.linalg.norm(fugal)  
@@ -433,7 +429,7 @@ class FODStructure:
         #Add the core FODs
         for shell in self.mCore:
             shell.mfods += self.mAtom.mPos   
-            if self.mfods == []:
+            if len(self.mfods) == 0:
                 self.mfods = [shell.mfods]
             else:
                 self.mfods = np.vstack((self.mfods,shell.mfods))  ###HOW TO concatenate FODs, easily
@@ -469,3 +465,32 @@ class FODStructure:
 
         def RotateTetra(self):
             pass
+
+################# ADDITIONAL FUNCTIONS #################
+
+def AddNormals(vectors: list[np.array]) -> np.ndarray:
+    """This function normalizes all the given vectors, adds their normal,
+    and normalizes the resultant vector.
+    
+    This function is motivated by the observation that FFODs are closer to the
+    bisecting angle in double FFODs, rather than a weighted """
+    free_dir_norm = [1/np.linalg.norm(x) for x in vectors]
+    free_dir = vectors * np.reshape(free_dir_norm,(2,1))
+    free_dir = free_dir.sum(0)
+    free_dir /= np.linalg.norm(free_dir)
+    return free_dir
+
+def DominantAtom(at1: Atom, at2):
+    if at1.mPeriod < at2.mPeriod:
+        fugal = at2.mPos - at1.mPos
+        atom = at1
+    elif at1.mPeriod > at2.mPeriod:
+        fugal = at1.mPos - at2.mPos
+        atom = at2
+    elif at1.mZ > at2.mZ:
+            fugal = at2.mPos - at1.mPos
+            atom = at1
+    elif at1.mZ <= at2.mZ:
+            fugal = at1.mPos - at2.mPos
+            atom = at2
+    return atom, fugal
