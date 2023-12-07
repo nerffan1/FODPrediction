@@ -107,7 +107,7 @@ class FODStructure:
     def __init__(self, parent: Atom):
         self.mAtom = parent
         self.mCore = [] #A list of FODShells
-        self.mValence = [] #A list of FODs
+        self.mValence = [] #A list of FOfDs
         self.mfods = [] #All Finalized FODs
         self.mLastBond = 0
     
@@ -148,11 +148,12 @@ class FODStructure:
         TODO: GlobalData.GetFullElecCount() Can be precalculated ahead of time and placed as a member vatrable
         """
         at1 = self.mAtom
-        def AxialPoint_Simple(At1: Atom, At2: Atom):
+        def AxialPoint_Simple_old(At1: Atom, At2: Atom):
             """
             Return FOD location for a Single FOD representing a Single Bond.
             If the bonding atoms are the same type, then the midpoint is chosen.
             Atom1 is assumed to be bigger than Atom2.  
+            TODO: Should just return a length since we can calculate dominant one
             """
             Z1 = At1.mZ
             Z2 = At2.mZ
@@ -191,11 +192,33 @@ class FODStructure:
 
             #Return final value with offset
             dx = (At2.mPos - At1.mPos)*g
-            return (At1.mPos + dx)
+            return (dx)
+        
+        def AxialPoint_Simple(dom:Atom, sub:Atom, dir:np.ndarray) -> np.ndarray:
+            """
+            Return FOD location for a Single FOD representing a Single Bond.
+            If the bonding atoms are the same type, then the midpoint is chosen.
+            Atom1 is assumed to be bigger than Atom2.  
+            TODO: Should just return a length since we can calculate dominant one
+            """
+            Z1 = dom.mZ
+            Z2 = sub.mZ
+            if dom.mZ == sub.mZ:
+                g = 0.5
+            else:
+                Z1 = 0.4 if Z1 == 1 else Z1
+                Z2 = 0.4 if Z2 == 1 else Z2
+                r = sqrt(Z1/Z2)
+                g = r/(1+r)
+            if g < 0.5:
+                return dir*g
+            else:
+                return dir*(1-g)    
         
         def SingleBond(at2: Atom):
-            bfod = AxialPoint_Simple(at1, at2)
-            self.AddValFOD(bfod, at2, True)
+            dom,sub,dir = DominantAtom(at1,at2,True)
+            bfod = AxialPoint_Simple(dom, sub, dir)
+            self.AddValFOD(dom.mPos + bfod, at2, True)
 
         def RandomPerpDir(dir):
             #TODO: Remove the other RandPerp
@@ -213,29 +236,16 @@ class FODStructure:
             Create the FODs representing the double bond. Currently the FOD filling is unidirectional (sequential)
             and  does not account for the next atom in the iteration to see if we can further accomodate the bonding FODs 
             """
-            def DoubleBond_Diatomic(at2: Atom):
+            def D_Bond_Height(dom: Atom, axisproj: float):
                 """
                 Return radial distance from interatomic (bonding) axis. 
-                
                 For heterogenous atoms....
                 """
                 # Radius Logic
-                if at1.mZ == at2.mZ:
-                    c = np.linalg.norm(at2.mPos - at1.mPos)
-                    elecs = GlobalData.GetFullElecCount(at1.mGroup, at1.mPeriod)
-                    rad = GlobalData.mRadii[elecs][at1.mZ]
-                    return sqrt(rad**2 - ((c/2)**2))
-                else:
-                    atoom, fugal = DominantAtom(at1, at2)
-                    elecs = GlobalData.GetFullElecCount(atoom.mGroup, atoom.mPeriod)
-                    rad = GlobalData.mVert[elecs][atoom.mZ]
-                    #Do an inscrbed triangle within the Atom-BondFOD-Atom triangle
-                    return rad/2
+                elecs = GlobalData.GetFullElecCount(dom.mGroup, dom.mPeriod)
+                rad = GlobalData.mRadii[elecs][dom.mZ]
+                return sqrt(rad**2 - ((axisproj)**2))
                             
-            #Information
-            axis2fod = np.ndarray(3)
-            dir = at1.mPos - at2.mPos
-
             def CrossPerpDir():
                 vector_for_cross = []
                 for otherb in self.mAtom.mBonds:
@@ -244,33 +254,42 @@ class FODStructure:
                 vector_for_cross -= self.mAtom.mPos
                 vec = np.cross(*vector_for_cross)
                 return vec/np.linalg.norm(vec)
-                
-            if GlobalData.GetFullElecCount(self.mAtom.mGroup,self.mAtom.mPeriod) <= 18:
+            
+            def D_FFOD_Direction():
                 if self.mAtom.mFreePairs == 0:
+                    #Determine DFFOD Direction
                     if len(self.mAtom.mBonds) == 3: # Planar
-                        axis2fod = CrossPerpDir()
+                        return  CrossPerpDir()
                     elif len(self.mAtom.mBonds) == 2:
                         if self.mAtom.mBonds.index(bond) == 0:
-                            axis2fod = RandomPerpDir(dir)
+                            return  RandomPerpDir(dir)
                         else:
                             # Cross product between atom and already-placed FODs
                             vector_for_cross = []
                             for fods in self.mValence:
                                 vector_for_cross.append(fods)
                             vector_for_cross -= self.mAtom.mPos
-                            axis2fod = np.cross(*vector_for_cross)   
+                            return np.cross(*vector_for_cross)   
                 else:
-                    axis2fod = RandomPerpDir(dir)
-                    
-                #Find perpendicular unit vector and multiply by chosen radius
-                axis2fod *= DoubleBond_Diatomic(at2)
-                
+                    return RandomPerpDir(dir)
+
+            #Information
+            axis2fod = np.ndarray(3)
+            dom,sub,fugal = DominantAtom(at1,at2, True)
+
+            if GlobalData.GetFullElecCount(self.mAtom.mGroup,self.mAtom.mPeriod) <= 18:
+                #Find perpendicular unit vector
+                if self.mAtom.mFreePairs == 0:
+                    axis2fod = D_FFOD_Direction()
+                  
                 #Add both FODs of the Double Bond
-                midpoint = AxialPoint_Simple(at1, at2)
+                midpoint = AxialPoint_Simple(dom,sub,fugal)
+                # Determine Vertical Projection of DFFOD
+                axis2fod *= D_Bond_Height(dom, np.linalg.norm(midpoint))
 
                 #Add FODs
-                self.AddValFOD(midpoint + axis2fod,at2,True)
-                self.AddValFOD(midpoint - axis2fod,at2,True)
+                self.AddValFOD(dom.mPos + midpoint + axis2fod,at2,True)
+                self.AddValFOD(dom.mPos + midpoint - axis2fod,at2,True)
     
         def AddFreeElectron(free: int):
             """
@@ -289,9 +308,11 @@ class FODStructure:
                 free_dir /= np.linalg.norm(free_dir)
 
             if free == 1:
-                if len(self.mAtom.mBonds) > 1 :        
-                    free_dir = np.sum(vector_for_cross, axis=0)
-                    free_dir /= np.linalg.norm(free_dir)
+                # For a single atom
+                if len(self.mAtom.mBonds) == 3 :
+                    dr = vector_for_cross.sum(0)
+                elif len(self.mAtom.mBonds) == 2 :
+                    free_dir = AddNormals(vector_for_cross)
                     dr = free_dir*GlobalData.mRadii[fulle][self.mAtom.mZ]
                 elif len(self.mAtom.mBonds) == 1:
                     l = GlobalData.mVert[fulle][self.mAtom.mZ]
@@ -314,6 +335,11 @@ class FODStructure:
                 if len(self.mValence) == 2: #Might be different for FODs or for number of bonds
                     #Determine the free direction
                     dxy  = AddNormals(vector_for_cross)
+                    if len(at1.mBonds) == 2:
+                        dxy = at1.mPos - [atoms[bonds[1]].mPos for bonds in at1.mBonds]
+                        dxy = dxy.sum(0)
+                        dxy /= np.linalg.norm(dxy)
+
                     #TODO: Must determine logic to choose distance, based of bonding as well 
                     R = np.linalg.norm(vector_for_cross[0]) # Remember these are the atom-BFOD distances
                     dxy *= R*np.cos(theta)
@@ -375,7 +401,7 @@ class FODStructure:
             #TODO: Create a helper funtion for conditional statements
             """
             #Determine dominant atom and direction
-            atom, fugal = DominantAtom(at1,at2)
+            atom, fugal = DominantAtom(at1,at2,False)
             # Variables
             c = np.linalg.norm(fugal) # Distance
             fugal /= np.linalg.norm(fugal)  
@@ -475,22 +501,37 @@ def AddNormals(vectors: list[np.array]) -> np.ndarray:
     This function is motivated by the observation that FFODs are closer to the
     bisecting angle in double FFODs, rather than a weighted """
     free_dir_norm = [1/np.linalg.norm(x) for x in vectors]
-    free_dir = vectors * np.reshape(free_dir_norm,(2,1))
+    free_dir = vectors * np.reshape(free_dir_norm,(len(vectors),1))
     free_dir = free_dir.sum(0)
     free_dir /= np.linalg.norm(free_dir)
     return free_dir
 
-def DominantAtom(at1: Atom, at2):
+def DominantAtom(at1: Atom, at2: Atom, all=True):
+    """
+    This Function determines the dominant atom in the bonding and its distance to the weaker atom.
+    If the 
+    at1: An atom
+    at2: An atom bonding to at2
+    all: Boolean to return dominant and weak atom. Default only return dominant atom.
+    """
     if at1.mPeriod < at2.mPeriod:
         fugal = at2.mPos - at1.mPos
-        atom = at1
+        dom = at1
+        sub = at2
     elif at1.mPeriod > at2.mPeriod:
         fugal = at1.mPos - at2.mPos
-        atom = at2
+        dom = at2
+        sub = at1
     elif at1.mZ > at2.mZ:
             fugal = at2.mPos - at1.mPos
-            atom = at1
+            dom = at1
+            sub = at2
     elif at1.mZ <= at2.mZ:
             fugal = at1.mPos - at2.mPos
-            atom = at2
-    return atom, fugal
+            dom = at2
+            sub = at1
+    # Either return dom and sub, or just the dominant atom. 
+    if all:
+        return dom, sub, fugal
+    else:
+        return dom, fugal
