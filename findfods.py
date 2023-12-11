@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 #Atom Class
 #Version 0.1.6
-from FODHeuristic import *
 from  globaldata import GlobalData
+from FODHeuristic import *
 import numpy as np
 import sys
 
@@ -11,5 +11,5 @@ if len(sys.argv) == 1:
     exit()
 dat = GlobalData()
 mol = Molecule(sys.argv[1])
-#mol._debug_printAtoms()
+mol.debug_printAtoms()
 mol.CreateXYZ()

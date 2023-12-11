@@ -6,12 +6,12 @@ from rdkit.Chem import AllChem
 
 #Custom Made library
 from globaldata import GlobalData
-from fod_struct import Atom #For intellisense
-from fod_struct import *
+from ElementaryClasses import *
 
 class Molecule:
     def __init__(self, xyzfile) -> None:
         self.mFile = xyzfile
+        self.rdmol = Chem.MolFromXYZFile(xyzfile)
         self.mComment = ""
         self.mAtoms: List[Atom] = []
         self.mBonds = []
@@ -85,19 +85,19 @@ class Molecule:
         """
         Calculate Bonds using the RDKit library.
         This will be used for prototyping  
-        """
-        mol = Chem.MolFromXYZFile(self.mFile) 
-        rdDetermineBonds.DetermineConnectivity(mol)
+        """ 
+        rdDetermineBonds.DetermineConnectivity(self.rdmol)
         print(self.mComment)
-        rdDetermineBonds.DetermineBondOrders(mol, charge=0)
-        rdmolops.Kekulize(mol)
-        for bond in mol.GetBonds():
+        rdDetermineBonds.DetermineBondOrders(self.rdmol, charge=0)
+        rdmolops.Kekulize(self.rdmol)
+        for bond in self.rdmol.GetBonds():
+            
             atom1 = bond.GetBeginAtomIdx()   
             atom2 = bond.GetEndAtomIdx() 
             order = bond.GetBondTypeAsDouble()
             self.mBonds.append(Bond(atom1, atom2,order))
-            self.mAtoms[atom1]._AddBond(atom2, order)
-            self.mAtoms[atom2]._AddBond(atom1, order)
+            self.mAtoms[atom1].AddBond(atom2, order)
+            self.mAtoms[atom2].AddBond(atom1, order)
     
     def CheckStericity(self):
         """
@@ -107,6 +107,7 @@ class Molecule:
         """
         for atom in self.mAtoms:
             atom.CalcSteric()
+        
 
     def CountFODs(self):
         """
@@ -118,11 +119,18 @@ class Molecule:
         return count
 
     #Debugging Methods 
-    def _debug_printAtoms(self):
+    def debug_printAtoms(self):
         """Print atom names and positions"""
         for atom in self.mAtoms:  
             print("---------------------------------")
             print(atom.mName, "at", atom.mPos)
+            at = self.rdmol.GetAtomWithIdx(atom.mI)
+            print(f'RDValency: {at.GetTotalValence()}')
+            print(f'RDImplicitVal: {at.GetImplicitValence()}')
+            print(f'RDExplicitVal: {at.GetExplicitValence()}')
+            print(f'RDFormalQ: {at.GetFormalCharge()}')
+            print(f'RDNeighbors: {[x.GetSymbol() for x in at.GetNeighbors()]}')
+            print(f'RDNeighbors: {at.GetHybridization()}')
             print(f'Valency: {atom.mValCount}')
             print(f'Steric Number: {atom.mSteric}')
             print(f'Free Pairs: {atom.mFreePairs}')
