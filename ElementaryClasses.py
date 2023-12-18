@@ -7,8 +7,9 @@
 #Author: Angel-Emilio Villegas S.
 from ast import Global
 from  globaldata import GlobalData
-import math3d
+import Shells
 import numpy as np
+from Funcs import *
 from numpy import sqrt 
 from typing import List
 from scipy.spatial.transform import Rotation as R
@@ -357,9 +358,9 @@ class FODStructure:
             if core_elec != 0:
                 for shell in GlobalData.mGeo_Ladder[core_elec]:
                     if shell == 'point':
-                        self.mCore.append(self.Point(self.mAtom))
+                        self.mCore.append(Shells.Point())
                     elif shell == 'tetra':
-                        self.mCore.append(self.Tetrahedron(10,self.mAtom))
+                        self.mCore.append(Shells.Tetra(10, at1.mZ))
         
         #Prepare the valence shell first, since it will help determine the
         # orientation of the inner shells
@@ -380,51 +381,7 @@ class FODStructure:
             else:
                 self.mfods = np.vstack((self.mfods,shell.mfods))  ###HOW TO concatenate FODs, easily
     
-    class FODShell:
-        def __init__(self, shape, fods, owner: Atom):
-            self.mOwner = owner
-            self.mShape = shape 
-            self.mfods = np.array(fods)
-        def __str__(self):
-            return self.mShape
-
-    class Point(FODShell):
-        def __init__(self, owner: Atom):
-            super().__init__('point', [0.0,0.0,0.0], owner)
-
-    class Tetrahedron(FODShell):
-        """
-        Tetrahedron Class: FOD Geometry corresponding to sp3 "hybridization' geometry.
-        Roadmap: There will  be different functions to create compound transformations of FODs (e.g. the base, or peak
-        of the tetrahedron), and to rotate them in the proper direction as well.
-        """
-        def __init__(self, core_amount, owner: Atom):
-            super().__init__('tetra', GlobalData.mTetraGeo, owner)
-            self.mfods *= GlobalData.mRadii[core_amount][self.mOwner.mZ]
-        #Class Methods
-        def CreateTetra(self):
-            """
-            This method arranges 4 FOD points in a tetrahedral form. Depending on the bonding, and free electrons,
-            the direction vector will be different. 
-            """
-            pass
-
-        def RotateTetra(self):
-            pass
 ################# ADDITIONAL FUNCTIONS #################
-
-def AddNormals(vectors: list[np.array]) -> np.ndarray:
-    """This function normalizes all the given vectors, adds their normal,
-    and normalizes the resultant vector.
-    
-    This function is motivated by the observation that FFODs are closer to the
-    bisecting angle in double FFODs, rather than a weighted """
-    free_dir_norm = [1/np.linalg.norm(x) for x in vectors]
-    free_dir = vectors * np.reshape(free_dir_norm,(len(vectors),1))
-    free_dir = free_dir.sum(0)
-    free_dir /= np.linalg.norm(free_dir)
-    return free_dir
-
 def DominantAtom(at1: Atom, at2: Atom, all=True):
     """
     This Function determines the dominant atom in the bonding and its distance to the weaker atom.
@@ -475,35 +432,3 @@ def AxialPoint_Simple(dom:Atom, sub:Atom, dir:np.ndarray) -> np.ndarray:
                 return dir*g
             else:
                 return dir*(1-g)
-            
-def RotatePoints(n:int,fod0:np.ndarray,axis:np.ndarray) -> List[np.ndarray]:
-    """
-    This function creates n points in a circle, starting from your fod0 (i.e. the first fod in the circle).
-
-    n: Number of points to equally distribute on a circle
-    ogp: The Original Point, the first element in your circle
-    axis: The axis of rotation
-    """
-    assert len(axis) == 3, "The array must have 3 dimensions"
-    fodsRotated = [fod0]
-    step = (2*np.pi)/n
-    for i in range(1,n):
-        rot = R.from_rotvec(((step*i*2*np.pi)/3)*axis)
-        fod = np.matmul(rot.as_matrix(),fod0)
-        fodsRotated.append(fod)
-    return fodsRotated
-
-def RandomPerpDir(ref: np.ndarray) -> np.ndarray:
-    """
-    This function returns a random perpendicular direction with respect to your reference direction.
-
-    Ref: Reference direction
-    """
-    if ref[0] == 0: return np.array([1.0,0.0,0.0])
-    elif ref[1] == 0: return np.array([0.0,1.0,0.0])
-    elif ref[2] == 0: return np.array([0.0,0.0,1.0])
-    else:
-        b_z = -(10*ref[0] + 2*ref[1])/dir[2]
-        randperp = np.array([10,2,b_z])
-        randperp /= np.linalg.norm(randperp)
-        return randperp     
