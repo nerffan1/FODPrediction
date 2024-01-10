@@ -45,3 +45,5 @@ def RandomPerpDir(ref: np.ndarray) -> np.ndarray:
         randperp = np.array([10,2,b_z])
         randperp /= np.linalg.norm(randperp)
         return randperp     
+    
+normalize = lambda v: v/np.linalg.norm(v)
