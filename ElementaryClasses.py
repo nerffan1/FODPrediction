@@ -11,6 +11,7 @@ import Shells
 import numpy as np
 from Funcs import *
 from numpy import sqrt 
+from numpy.linalg import norm
 from typing import List
 from scipy.spatial.transform import Rotation as R
 import csv
@@ -21,6 +22,14 @@ class Bond:
     def __init__(self,start,end,order):
         self.mAtoms = (start,end)
         self.mOrder = order
+        boldMeek = BoldMeek(GlobalData.mAtoms[start],GlobalData.mAtoms[end] )
+        if order == 1:
+            self.mBFOD = SBFOD(*boldMeek)
+        elif order == 2:
+            self.mBFOD = DBFOD(*boldMeek)
+        elif order == 3:
+            self.mBFOD = TBFOD(*boldMeek)
+    
     def __str__(self) -> str:
         return f"From {self.mAtoms[0]} to {self.mAtoms[1]}. Order: {self.mOrder}"
     
@@ -108,6 +117,7 @@ class FODStructure:
         self.mAtom = parent
         self.mCore = [] #A list of FODShells
         self.mValence = [] #A list of FODs
+        self.mBFODs = []
         self.mfods = [] #All Finalized FODs
         self.mLastBond = 0
     
@@ -154,7 +164,7 @@ class FODStructure:
         at1 = self.mAtom
         
         def SingleBond(at2: Atom):
-            dom,weak,dir = DominantAtom(at1,at2,True)
+            dom,weak,dir = BoldMeekDir(at1,at2,True)
             bfod = AxialPoint_Simple(dom, weak, dir)
             self.AddValFOD([dom.mPos + bfod], at2, True)
         
@@ -231,7 +241,7 @@ class FODStructure:
 
             #Information
             axis2fod = np.ndarray(3)
-            dom,sub,fugal = DominantAtom(at1,at2, True)
+            dom,sub,fugal = BoldMeekDir(at1,at2, True)
 
             if GlobalData.GetFullElecCount(self.mAtom.mGroup,self.mAtom.mPeriod) <= 18:
                 #Find perpendicular unit vector
@@ -345,7 +355,7 @@ class FODStructure:
             #TODO: Create a helper funtion for conditional statements
             """
             #Determine dominant atom and direction
-            atom, fugal = DominantAtom(at1,at2,False)
+            atom, fugal = BoldMeekDir(at1,at2,False)
             # Variables
             c = np.linalg.norm(fugal) # Distance
             fugal = normalize(fugal)
@@ -407,7 +417,7 @@ class FODStructure:
                 self.mfods = np.vstack((self.mfods,shell.mfods))  ###HOW TO concatenate FODs, easily
     
 ################# ADDITIONAL FUNCTIONS #################
-def DominantAtom(at1: Atom, at2: Atom, all=True):
+def BoldMeekDir(at1: Atom, at2: Atom, all=True):
     """
     This Function determines the dominant atom in the bonding and its distance to the weaker atom.
     If the 
@@ -437,6 +447,27 @@ def DominantAtom(at1: Atom, at2: Atom, all=True):
     else:
         return dom, fugal
 
+def BoldMeek(at1: Atom, at2: Atom):
+    """
+    This Function determines the dominant and meek atom in the bonding.
+    at1: An atom
+    at2: An atom bonding to at2
+    """
+    if at1.mPeriod < at2.mPeriod:
+        dom = at1
+        sub = at2
+    elif at1.mPeriod > at2.mPeriod:
+        dom = at2
+        sub = at1
+    elif at1.mZ > at2.mZ:
+            dom = at1
+            sub = at2
+    elif at1.mZ <= at2.mZ:
+            dom = at2
+            sub = at1
+    # Either return dom and sub, or just the dominant atom. 
+    return dom, sub 
+
 def AxialPoint_Simple(dom:Atom, sub:Atom, dir:np.ndarray) -> np.ndarray:
             """
             Return FOD location for a Single FOD representing a Single Bond.
@@ -457,15 +488,21 @@ def AxialPoint_Simple(dom:Atom, sub:Atom, dir:np.ndarray) -> np.ndarray:
                 return dir*g
             else:
                 return dir*(1-g)
-            
-class BFOD:
+
+class FOD:
+    def __init__(self) -> None:
+        self.mPos = np.array([0.0,0.0,0.0])
+
+class BFOD(FOD):
     def __init__(self, boldAt: Atom, meekAt: Atom):
         self.mBold = boldAt
         self.mMeek = meekAt
         self.mMeekR = -1.0
         self.mBoldR = -1.0
-        self.mBondAxis = meekAt.mPos - boldAt.mPos
-        
+        self.mBondDir = meekAt.mPos - boldAt.mPos #Always in the direction leaving the Bold atom
+        self.mDistance = np.linalg.norm(self.mBondDir)
+        self.mBondDir = normalize(self.mBondDir)  
+
     def Calc_AxisBoldPortion(self, Zbold:int, Zmeek:int) -> float:
             """
             Finds the portion (from 0 to 1) of the bonding distance that the Bold atom covers.
@@ -497,15 +534,25 @@ class BFOD:
 
 class SBFOD(BFOD):
     def __init__(self, bold: Atom, meek: Atom):
-        super().__init__()
+        super().__init__(bold,meek)
         self.mBoldPortion = self.Calc_AxisBoldPortion(bold.mZ, meek.mZ)
+        self.DetermineParamenters()
+
+    def DetermineParamenters(self):
+            """
+            Add the single BFOD along the axis. 
+            """
+            bfod = AxialPoint_Simple(self.mBold, self.mMeek, self.mBondDir)
+            self.mPos = self.mBold.mPos + bfod
+            self.mBoldR = self.mDistance*self.mBoldPortion
+            self.mMeekR = self.mDistance*(1-self.mBoldPortion)
 
 class DBFOD(BFOD):
     def __init__(self, bold: Atom, meek: Atom):
-        super().__init__()
+        super().__init__(bold,meek)
         self.mBoldAngle = -1.0
         self.mMeekAngle = -1.0
-        self.mHeight = self.CalcHeight(self.mBold, )
+        #self.mHeight = self.CalcHeight(self.mBold, )
 
     def CalcHeight(bold: Atom, axisproj: float):
         """
@@ -519,4 +566,4 @@ class DBFOD(BFOD):
     
 class TBFOD(BFOD):
     def __init__(self,bold: Atom, meek: Atom):
-        super().__init__()
+        super().__init__(bold,meek)

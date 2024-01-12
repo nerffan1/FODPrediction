@@ -30,7 +30,7 @@ def RotatePoints(n:int,fod0:np.ndarray,axis:np.ndarray) -> List[np.ndarray]:
     fodsRotated = [fod0]
     step = (2*np.pi)/n
     for i in range(1,n):
-        rot = R.from_rotvec((step*i*2*np.pi)*axis)
+        rot = R.from_rotvec((step*i)*axis)
         fod = np.matmul(rot.as_matrix(),fod0)
         fodsRotated.append(fod)
     return fodsRotated
@@ -50,8 +50,6 @@ def RandomPerpDir(ref: np.ndarray) -> np.ndarray:
         randperp /= np.linalg.norm(randperp)
         return randperp     
     
-normalize = lambda v: v/np.linalg.norm(v)
-
 def AngleBetween(A: np.ndarray, B: np.ndarray) -> float:
     """
     Returns the angle between the 
@@ -59,3 +57,6 @@ def AngleBetween(A: np.ndarray, B: np.ndarray) -> float:
     ab = np.dot(A,B)
     ab_abs = np.linalg.norm(A)*np.linalg.norm(B)
     return np.arccos(ab/(ab_abs))
+
+####LAMBDA FUNCTIONS######
+normalize = lambda v: v/np.linalg.norm(v)

@@ -14,11 +14,11 @@ class Molecule:
         self.rdmol = Chem.MolFromXYZFile(xyzfile)
         self.mComment = ""
         self.mAtoms: List[Atom] = []
+        GlobalData.mAtoms = self.mAtoms
         self.mBonds = []
         self.__LoadXYZ()
         self.__RD_Bonds()
         self.CheckStericity()
-        GlobalData.mAtoms = self.mAtoms
         self.CalculateFODs()
 
     
@@ -98,7 +98,17 @@ class Molecule:
             self.mBonds.append(Bond(atom1, atom2,order))
             self.mAtoms[atom1].AddBond(atom2, order)
             self.mAtoms[atom2].AddBond(atom1, order)
-    
+            # Add the Bonding FODs
+            self.mAtoms[atom1].mFODStruct.mBFODs.append
+            boldMeek = BoldMeek(self.mAtoms[atom1],self.mAtoms[atom2])
+            if order == 1:
+                self.mAtoms[atom1].mFODStruct.mBFODs.append(SBFOD())
+                self.mBFOD = SBFOD(*boldMeek)
+            elif order == 2:
+                self.mBFOD = DBFOD(*boldMeek)
+            elif order == 3:
+                self.mBFOD = TBFOD(*boldMeek)
+ 
     def CheckStericity(self):
         """
         Determine Steric number of all atoms. Currently assumes that the atoms are closed-shell
