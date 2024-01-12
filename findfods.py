@@ -11,5 +11,5 @@ if len(sys.argv) == 1:
     exit()
 dat = GlobalData()
 mol = Molecule(sys.argv[1])
-mol.debug_printAtoms()
+#mol.debug_printAtoms()
 mol.CreateXYZ()

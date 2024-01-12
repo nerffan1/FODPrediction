@@ -107,7 +107,7 @@ class FODStructure:
     def __init__(self, parent: Atom):
         self.mAtom = parent
         self.mCore = [] #A list of FODShells
-        self.mValence = [] #A list of FOfDs
+        self.mValence = [] #A list of FODs
         self.mfods = [] #All Finalized FODs
         self.mLastBond = 0
     
@@ -122,7 +122,6 @@ class FODStructure:
         # Add to current valence
         for fod in fods:
             #Assertions
-            print(fod)
             assert isinstance(fod, np.ndarray), "The variable is not a NumPy ndarray."
 
             self.mValence.append(fod)
@@ -174,20 +173,49 @@ class FODStructure:
                 rad = GlobalData.mRadii[elecs][dom.mZ]
                 return sqrt(rad**2 - ((axisproj)**2))
                             
-            def CrossPerpDir():
+            def HeightDir_fromNeighborBFODs():
+                """
+                This returns the unit-vector of the direction that a DBFOD is displaced away from 
+                the bonding axis (called 'Height' throughout this code). It is obtained by a series of steps:
+                1) The cross-product of the FOD-Atom-FOD is obtained
+                2) Measure the angle between the Bonding Axis (BA) and the vector found in (1) 
+                3) If beyond a certain threshold, then rotate the direction 
+                
+                """
+                #(1)Obtain the FOD-Atom-FOD Cross Product. The height in a planar structure
                 vector_for_cross = []
                 for otherb in self.mAtom.mBonds:
                     if otherb != bond:
                         vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
                 vector_for_cross -= self.mAtom.mPos
-                vec = np.cross(*vector_for_cross)
-                return vec/np.linalg.norm(vec)
-            
+                D = np.cross(*vector_for_cross)
+                D = normalize(D) 
+                #(2)Measure Angle between D and the Bonding Axis (BA) 
+                BA = at2.mPos - at1.mPos
+                angle = AngleBetween(BA,D)
+                
+                #(3) Check for orthogonality
+                thres_max = 1.01*(np.pi/2) # +1% Deviation from 99%
+                thres_min = .99*(np.pi/2) # -1% Deviation from 99%
+                if angle > thres_max or angle < thres_min:
+                    #Get axis of rotation
+                    axis = np.cross(BA,D)
+                    axis = normalize(axis)
+                    #Get rotation angle
+                    if angle > thres_max: 
+                        angle_diff =  np.pi/2 - angle
+                    elif angle < thres_min:
+                        angle_diff = (np.pi/2) - angle
+                    #Rotate
+                    D = RotateVec(D, axis*angle_diff)
+ 
+                return D
+
             def D_FFOD_Direction():
                 if self.mAtom.mFreePairs == 0:
                     #Determine DFFOD Direction
-                    if len(self.mAtom.mBonds) == 3: # Planar
-                        return  CrossPerpDir()
+                    if len(self.mAtom.mBonds) == 3:
+                        return  HeightDir_fromNeighborBFODs()
                     elif len(self.mAtom.mBonds) == 2:
                         if self.mAtom.mBonds.index(bond) == 0:
                             return  RandomPerpDir(dir)
@@ -218,7 +246,6 @@ class FODStructure:
                 #Add FODs
                 self.AddValFOD([dom.mPos + midpoint + axis2fod],at2,True)
                 self.AddValFOD([dom.mPos + midpoint - axis2fod],at2,True)
-    
         
         def AddFreeElectron(free: int):
             """
@@ -234,7 +261,7 @@ class FODStructure:
                 #Useful Information
                 at2 = atoms[self.mAtom.mBonds[0].mAtoms[1]]
                 free_dir = self.mAtom.mPos - at2.mPos
-                free_dir /= np.linalg.norm(free_dir)
+                free_dir = normalize(free_dir)
 
             if free == 1:
                 # For a single atom
@@ -254,12 +281,10 @@ class FODStructure:
             elif free == 2:
                 #Direction away from atom, on plane of other bonds, or neighboring atoms
                 axis2fod = np.cross(*vector_for_cross)
-                axis2fod /= np.linalg.norm(axis2fod)
+                axis2fod = normalize(axis2fod)
                 #Get angle to atoms of FFODs (ffod-atom-ffod)
-                ab = np.dot(*vector_for_cross)
-                ab_abs =  np.linalg.norm(vector_for_cross,axis=1)
-                theta = np.deg2rad(220) - np.arccos(ab/(ab_abs[0]*ab_abs[1]))
-                theta /= 2
+                theta = np.deg2rad(220) - AngleBetween(vector_for_cross)
+                theta /= 2 
 
                 if len(self.mValence) == 2: #Might be different for FODs or for number of bonds
                     #Determine the free direction
@@ -267,7 +292,7 @@ class FODStructure:
                     if len(at1.mBonds) == 2:
                         dxy = at1.mPos - [atoms[bonds.mAtoms[1]].mPos for bonds in at1.mBonds]
                         dxy = dxy.sum(0)
-                        dxy /= np.linalg.norm(dxy)
+                        dxy = normalize(dxy)
 
                     #TODO: Must determine logic to choose distance, based of bonding as well 
                     Rad = np.linalg.norm(vector_for_cross[0]) # Remember these are the atom-BFOD distances
@@ -323,7 +348,7 @@ class FODStructure:
             atom, fugal = DominantAtom(at1,at2,False)
             # Variables
             c = np.linalg.norm(fugal) # Distance
-            fugal /= np.linalg.norm(fugal)  
+            fugal = normalize(fugal)
             elecs = GlobalData.GetFullElecCount(atom.mGroup, atom.mPeriod)
             rad = GlobalData.mRadii[elecs][atom.mZ] #Radius
             a = GlobalData.mVert[elecs][atom.mZ] #Edge
@@ -434,12 +459,12 @@ def AxialPoint_Simple(dom:Atom, sub:Atom, dir:np.ndarray) -> np.ndarray:
                 return dir*(1-g)
             
 class BFOD:
-    def __init__(self, bold: Atom, meek: Atom):
-        self.mBold = bold
-        self.mMeek = meek
+    def __init__(self, boldAt: Atom, meekAt: Atom):
+        self.mBold = boldAt
+        self.mMeek = meekAt
         self.mMeekR = -1.0
         self.mBoldR = -1.0
-        self.mBondAxis = meek.mPos - bold.mPos
+        self.mBondAxis = meekAt.mPos - boldAt.mPos
         
     def Calc_AxisBoldPortion(self, Zbold:int, Zmeek:int) -> float:
             """

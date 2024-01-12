@@ -14,6 +14,10 @@ def AddNormals(vectors: list[np.array]) -> np.ndarray:
     free_dir /= np.linalg.norm(free_dir)
     return free_dir
             
+def RotateVec(V: np.ndarray, axis: np.ndarray):
+    rot = R.from_rotvec(axis)
+    return np.matmul(rot.as_matrix(),V)
+
 def RotatePoints(n:int,fod0:np.ndarray,axis:np.ndarray) -> List[np.ndarray]:
     """
     This function creates n points in a circle, starting from your fod0 (i.e. the first fod in the circle).
@@ -26,7 +30,7 @@ def RotatePoints(n:int,fod0:np.ndarray,axis:np.ndarray) -> List[np.ndarray]:
     fodsRotated = [fod0]
     step = (2*np.pi)/n
     for i in range(1,n):
-        rot = R.from_rotvec(((step*i*2*np.pi)/3)*axis)
+        rot = R.from_rotvec((step*i*2*np.pi)*axis)
         fod = np.matmul(rot.as_matrix(),fod0)
         fodsRotated.append(fod)
     return fodsRotated
@@ -47,3 +51,11 @@ def RandomPerpDir(ref: np.ndarray) -> np.ndarray:
         return randperp     
     
 normalize = lambda v: v/np.linalg.norm(v)
+
+def AngleBetween(A: np.ndarray, B: np.ndarray) -> float:
+    """
+    Returns the angle between the 
+    """
+    ab = np.dot(A,B)
+    ab_abs = np.linalg.norm(A)*np.linalg.norm(B)
+    return np.arccos(ab/(ab_abs))
