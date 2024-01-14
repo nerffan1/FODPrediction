@@ -7,6 +7,8 @@ from rdkit.Chem import AllChem
 #Custom Made library
 from globaldata import GlobalData
 from ElementaryClasses import *
+from Bond import *
+from BFOD import *
 
 class Molecule:
     def __init__(self, xyzfile) -> None:
@@ -102,7 +104,8 @@ class Molecule:
             self.mAtoms[atom1].mFODStruct.mBFODs.append
             boldMeek = BoldMeek(self.mAtoms[atom1],self.mAtoms[atom2])
             if order == 1:
-                self.mAtoms[atom1].mFODStruct.mBFODs.append(SBFOD())
+                self.mAtoms[atom1].AddBFOD(SBFOD(*boldMeek))
+                self.mAtoms[atom2].AddBFOD(SBFOD(*boldMeek))
                 self.mBFOD = SBFOD(*boldMeek)
             elif order == 2:
                 self.mBFOD = DBFOD(*boldMeek)
