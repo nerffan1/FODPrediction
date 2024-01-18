@@ -23,7 +23,6 @@ class Molecule:
         self.CheckStericity()
         self.CalculateFODs()
 
-    
     #String Output
     def __str__(self) -> str:
         str1 = self.mComment + "\n"
@@ -82,21 +81,23 @@ class Molecule:
             atom_xyz = [float(x) for x in coor[1:4]]
             self.mAtoms.append(Atom(i, coor[0],atom_xyz)) #Name and Position
         XYZ.close()
+        print(self.mComment) # Print the comment from the XYZ file 
     
     def __RD_Bonds(self):
         """
         Calculate Bonds using the RDKit library.
         This will be used for prototyping  
         """ 
+        #RDKit Functionality to determine the bonding.
         rdDetermineBonds.DetermineConnectivity(self.rdmol)
-        print(self.mComment)
         rdDetermineBonds.DetermineBondOrders(self.rdmol, charge=0)
         rdmolops.Kekulize(self.rdmol)
-        for bond in self.rdmol.GetBonds():
+        #Loop through the
+        for rdbond in self.rdmol.GetBonds():
             
-            atom1 = bond.GetBeginAtomIdx()   
-            atom2 = bond.GetEndAtomIdx() 
-            order = bond.GetBondTypeAsDouble()
+            atom1 = rdbond.GetBeginAtomIdx()   
+            atom2 = rdbond.GetEndAtomIdx() 
+            order = rdbond.GetBondTypeAsDouble()
             self.mBonds.append(Bond(atom1, atom2,order))
             self.mAtoms[atom1].AddBond(atom2, order)
             self.mAtoms[atom2].AddBond(atom1, order)
@@ -106,11 +107,13 @@ class Molecule:
             if order == 1:
                 self.mAtoms[atom1].AddBFOD(SBFOD(*boldMeek))
                 self.mAtoms[atom2].AddBFOD(SBFOD(*boldMeek))
-                self.mBFOD = SBFOD(*boldMeek)
             elif order == 2:
-                self.mBFOD = DBFOD(*boldMeek)
+                #self.mAtoms[atom1].AddBFOD(DBFOD(*boldMeek))
+                #self.mAtoms[atom2].AddBFOD(DBFOD(*boldMeek))
+                pass
             elif order == 3:
-                self.mBFOD = TBFOD(*boldMeek)
+                self.mAtoms[atom1].AddBFOD(TBFOD(*boldMeek))
+                self.mAtoms[atom2].AddBFOD(TBFOD(*boldMeek))
  
     def CheckStericity(self):
         """
@@ -165,3 +168,10 @@ class Molecule:
             str4[b.mAtoms[0]][b.mAtoms[1]] = b.mOrder
         for atom in str4:
             print(atom)    
+
+    def _debug_printBFODs(self):
+        from ElementaryClasses import Atom
+        for atom in GlobalData.mAtoms:
+            print(f'In atom {atom.mI}:')
+            for bfod in atom.mFODStruct.mBFODs:
+                print(bfod)

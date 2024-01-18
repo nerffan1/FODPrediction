@@ -1,7 +1,11 @@
+from Funcs import *
+from FOD import *
 from ElementaryClasses import *
+from globaldata import *
 
 class BFOD(FOD):
     def __init__(self, boldAt: Atom, meekAt: Atom):
+        super().__init__()
         self.mBold = boldAt
         self.mMeek = meekAt
         self.mMeekR = -1.0
@@ -55,11 +59,12 @@ class SBFOD(BFOD):
             self.mMeekR = self.mDistance*(1-self.mBoldPortion)
 
 class DBFOD(BFOD):
-    def __init__(self, bold: Atom, meek: Atom):
+    def __init__(self, bold: Atom, meek: Atom, heightdir: np.ndarray):
         super().__init__(bold,meek)
         self.mBoldAngle = -1.0
         self.mMeekAngle = -1.0
-        #self.mHeight = self.CalcHeight(self.mBold, )
+        self.mHeight = np.array([0.0,0.0,0.0])
+
 
     def CalcHeight(bold: Atom, axisproj: float):
         """
@@ -70,7 +75,15 @@ class DBFOD(BFOD):
         elecs = GlobalData.GetFullElecCount(bold.mGroup, bold.mPeriod)
         rad = GlobalData.mRadii[elecs][bold.mZ]
         return sqrt(rad**2 - ((axisproj)**2))
-    
+
+    def DetermineParamenters(self):
+        pass
+
+    def Duplicate(self):
+        """
+        Create the 
+        """    
+
 class TBFOD(BFOD):
     def __init__(self,bold: Atom, meek: Atom):
         super().__init__(bold,meek)

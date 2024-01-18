@@ -1,108 +1,10 @@
-#Description: This file contains as set of classes that will implement the FOD Heuristic Solution 
-#  following the paradigm of Object-Oriented Programming (OOP). Encapsulation for FOD_Structure, FODs,
-#  FOD_Orbital, among other things will be included in this file.
-# Roadmap: Use polymorphism for Closed Hybrid Shells (e.g. sp3).
-#  -  Add Tetrahedra class and several attributes/methods to manipulate them
-#  - In far future, somehow implement the triaugmented triangular prism that corresponds to sp3d5 ( 9 FODs, 18 electrons) 
-#Author: Angel-Emilio Villegas S.
-from ast import Global
-from  globaldata import GlobalData
-import Shells
-import numpy as np
-from Funcs import *
-from numpy import sqrt 
-from numpy.linalg import norm
 from typing import List
-from scipy.spatial.transform import Rotation as R
-import csv
-from Bond import *
+import numpy as np
 from FOD import *
+from BFOD import *
+from Funcs import *
+from globaldata import *
 
-################# FOD STRUCTURE #################
-
-class Atom:
-    def __init__(self, index: int, Name: str, Pos):
-        #Known Attributes
-        self.mName = Name
-        self.mPos = np.array(Pos) 
-        self.mI = index
-        self.mZ = GlobalData.GetElementAtt(self.mName, "AtomicNumber")
-        self.mPeriod = int(GlobalData.GetZAtt(self.mZ, "Period" ))
-        self.mGroup = int(GlobalData.GetZAtt(self.mZ, "Group" ))
-        self.mValCount = self._FindValence()
-        #Undetermined Attributes
-        self.mSteric = 0
-        self.mFreePairs = 0
-        self.mCharge = 0 #Temporarily zero for all atoms. Ionic atoms can be dealt with in the future
-        self.mBonds = []
-        self.mFODStruct = FODStructure(self)
-        self.mCompleteVal = False
-        
-    def AddBond(self, atom2: int, order: int):
-        self.mBonds.append(Bond(self.mI, atom2,order))
-
-    def AddBFOD(self, fod:FOD):
-        self.mFODStruct.mBFODs.append(fod)
-    
-    def CalcSteric_test(self) -> None:
-        """
-        TODO: Need to account for systems where the valence electrons + bonding FODs
-        """
-        self.mFreePairs = int((self.mSteric - np.sum([2*x.mOrder for x in self.mBonds ]))/2)
-        self.mSteric = self.mFreePairs + len(self.mBonds)
-    
-    def CalcSteric(self) -> None:
-        """
-        This function assumes that the system at hand only contains Closed Shell calculations.
-        TODO: Need to account for systems where the valence electrons + bonding FODs
-        """
-        #Electrons involved in the Bond
-        bondelec = np.sum([2*bond.mOrder for bond in self.mBonds])
-        # The difference between the total electrons and the number of electrons that fill the shell
-        self.mCharge = (self.mZ + bondelec) - GlobalData.GetFullElecCount(self.mGroup, self.mPeriod)
-        self.mFreePairs = int(GlobalData.mShellCount[self.mPeriod] - bondelec)/2
-        self.mSteric = self.mFreePairs + len(self.mBonds)
-    
-    def _FindValence(self):
-        """
-        This method finds the number of electrons in the valence shell by finding the 
-        difference between the current Group and the last ClosedShell Group. Only works up
-        to 5th period.
-        TODO: This can be saved in GlobalData
-        """
-        if self.mGroup < 4:
-            return self.mGroup
-        else:
-            if self.mPeriod < 4:
-                return (2 + (self.mGroup - 12))
-            elif self.mPeriod < 6:
-                return (self.mGroup)
-                    
-    def _CheckFullShell(self):
-        """
-        Check that the atom has a closed shell.
-        Future: Add a variable that saves the info so that looping every time
-        this is called (if called more than once) is unnecesary
-        TODO: Alternatively, just check the amount of electrons
-        """
-        #Determine How many electrons are needed to fill shell
-        for ClGrp in GlobalData.mClosedGroups:
-            if self.mGroup < ClGrp:
-                checkshell = ClGrp - self.mGroup + self.mCharge
-                break 
-        for bond in self.mBonds:
-            checkshell -= bond.mOrder
-        if checkshell == 0:
-            return True
-        else:
-            return False
-    
-    # Additional Functions
-    def __str__(self):
-        pass    
-
-######################## FOD Structure Class  ########################
-#HOW TO concatenate FODs, easily
 class FODStructure:
     def __init__(self, parent: Atom):
         self.mAtom = parent
@@ -152,24 +54,20 @@ class FODStructure:
         TODO: Account previous bonds formed, by talling previous FODs, or looking back at mBonds 
         TODO: GlobalData.GetFullElecCount() Can be precalculated ahead of time and placed as a member vatrable
         """
-        #Lazy loading in order to 
-        from BFOD import SBFOD, DBFOD, TBFOD  
-       
         at1 = self.mAtom
         
-
         def SingleBond(at2: Atom):
            """
            Set parameters from Single Bond.
            -Accounted for in SBFOD 
-           """
+           """ 
            dom,weak,dir = BoldMeekDir(at1,at2,True)
            bfod = AxialPoint_Simple(dom, weak, dir)
            self.AddValFOD([dom.mPos + bfod], at2, True)
            #Add the BFODs, new way
-           boldMeek = BoldMeek(at1,at2)
-           at1.AddBFOD(SBFOD(*boldMeek))
-           at2.AddBFOD(SBFOD(*boldMeek))
+           boldMeek = BoldMeek(self.mAtoms[at1],self.mAtoms[at2])
+           self.mAtoms[at1].AddBFOD(SBFOD(*boldMeek))
+           self.mAtoms[at2].AddBFOD(SBFOD(*boldMeek))
         
         def DoubleBond(at2: Atom, bond: Bond):
             """ 
@@ -251,7 +149,7 @@ class FODStructure:
                 #Find perpendicular unit vector
                 if self.mAtom.mFreePairs == 0:
                     axis2fod = D_FFOD_Direction()
-                    self.mBFODs.append(DBFOD(dom,sub,axis2fod))
+                    self.mBFODs.append(DBFOD(dom,sub,))
                   
                 #Add both FODs of the Double Bond
                 midpoint = AxialPoint_Simple(dom,sub,fugal)
@@ -298,7 +196,7 @@ class FODStructure:
                 axis2fod = np.cross(*vector_for_cross)
                 axis2fod = normalize(axis2fod)
                 #Get angle to atoms of FFODs (ffod-atom-ffod)
-                theta = np.deg2rad(220) - AngleBetween(*vector_for_cross)
+                theta = np.deg2rad(220) - AngleBetween(vector_for_cross)
                 theta /= 2 
 
                 if len(self.mValence) == 2: #Might be different for FODs or for number of bonds
@@ -424,75 +322,3 @@ class FODStructure:
             else:
                 self.mfods = np.vstack((self.mfods,shell.mfods))  ###HOW TO concatenate FODs, easily
     
-################# ADDITIONAL FUNCTIONS #################
-def BoldMeekDir(at1: Atom, at2: Atom, all=True):
-    """
-    This Function determines the dominant atom in the bonding and its distance to the weaker atom.
-    If the 
-    at1: An atom
-    at2: An atom bonding to at2
-    all: Boolean to return dominant and weak atom. Default only return dominant atom.
-    """
-    if at1.mPeriod < at2.mPeriod:
-        fugal = at2.mPos - at1.mPos
-        dom = at1
-        sub = at2
-    elif at1.mPeriod > at2.mPeriod:
-        fugal = at1.mPos - at2.mPos
-        dom = at2
-        sub = at1
-    elif at1.mZ > at2.mZ:
-            fugal = at2.mPos - at1.mPos
-            dom = at1
-            sub = at2
-    elif at1.mZ <= at2.mZ:
-            fugal = at1.mPos - at2.mPos
-            dom = at2
-            sub = at1
-    # Either return dom and sub, or just the dominant atom. 
-    if all:
-        return dom, sub, fugal
-    else:
-        return dom, fugal
-
-def BoldMeek(at1: Atom, at2: Atom):
-    """
-    This Function determines the dominant and meek atom in the bonding.
-    at1: An atom
-    at2: An atom bonding to at2
-    """
-    if at1.mPeriod < at2.mPeriod:
-        dom = at1
-        sub = at2
-    elif at1.mPeriod > at2.mPeriod:
-        dom = at2
-        sub = at1
-    elif at1.mZ > at2.mZ:
-            dom = at1
-            sub = at2
-    elif at1.mZ <= at2.mZ:
-            dom = at2
-            sub = at1
-    # Either return dom and sub, or just the dominant atom. 
-    return dom, sub 
-
-def AxialPoint_Simple(dom:Atom, sub:Atom, dir:np.ndarray) -> np.ndarray:
-            """
-            Return FOD location for a Single FOD representing a Single Bond.
-            If the bonding atoms are the same type, then the midpoint is chosen.
-            Atom1 is assumed to be bigger than Atom2.  
-            TODO: Should just return a length since we can calculate dominant one
-            """
-            Z1 = dom.mZ
-            Z2 = sub.mZ
-            if dom.mZ == sub.mZ:
-                return dir*0.5
-            else:
-                Z1 = 0.4 if Z1 == 1 else Z1
-                Z2 = 0.4 if Z2 == 1 else Z2
-                r = sqrt(Z1/Z2)
-                g = r/(1+r)
-            if g < 0.5:
-                return dir*g
-            else:
-                return dir*(1-g)
