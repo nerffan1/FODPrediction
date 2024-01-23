@@ -8,6 +8,7 @@ from rdkit.Chem import AllChem
 from globaldata import GlobalData
 from ElementaryClasses import *
 from Bond import *
+from FOD import FOD
 from BFOD import *
 
 class Molecule:
@@ -105,8 +106,7 @@ class Molecule:
             self.mAtoms[atom1].mFODStruct.mBFODs.append
             boldMeek = BoldMeek(self.mAtoms[atom1],self.mAtoms[atom2])
             if order == 1:
-                self.mAtoms[atom1].AddBFOD(SBFOD(*boldMeek))
-                self.mAtoms[atom2].AddBFOD(SBFOD(*boldMeek))
+                pass
             elif order == 2:
                 #self.mAtoms[atom1].AddBFOD(DBFOD(*boldMeek))
                 #self.mAtoms[atom2].AddBFOD(DBFOD(*boldMeek))
@@ -175,3 +175,17 @@ class Molecule:
             print(f'In atom {atom.mI}:')
             for bfod in atom.mFODStruct.mBFODs:
                 print(bfod)
+
+    def _debug_printBFODsXYZ(self):
+        with open("debug_bfod.xyz",'w') as output:
+            #First 2 lines
+            output.write(str(len(self.mAtoms) + len(GlobalData.mFODs)) + '\n')
+            output.write(self.mComment)
+            #Write all atoms
+            for atom in self.mAtoms:
+                output.write(' '.join([atom.mName,*[str(x) for x in atom.mPos]]) + '\n')
+            #Write all FODs
+            for bfod in GlobalData.mFODs:
+                xyz = " ".join([str(x) for x in bfod.mPos])   
+                output.write(f"X {xyz}\n")
+        pass

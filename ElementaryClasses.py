@@ -38,12 +38,17 @@ class Atom:
         self.mFODStruct = FODStructure(self)
         self.mCompleteVal = False
         
+    #Parameters from GlobalData
+    def GetMonoCovalRad(self): 
+        elecs = GlobalData.GetFullElecCount(self.mGroup, self.mPeriod)
+        return GlobalData.mRadii[elecs][self.mZ]
+
     def AddBond(self, atom2: int, order: int):
         self.mBonds.append(Bond(self.mI, atom2,order))
 
     def AddBFOD(self, fod:FOD):
         self.mFODStruct.mBFODs.append(fod)
-    
+
     def CalcSteric_test(self) -> None:
         """
         TODO: Need to account for systems where the valence electrons + bonding FODs
@@ -168,8 +173,10 @@ class FODStructure:
            self.AddValFOD([dom.mPos + bfod], at2, True)
            #Add the BFODs, new way
            boldMeek = BoldMeek(at1,at2)
-           at1.AddBFOD(SBFOD(*boldMeek))
-           at2.AddBFOD(SBFOD(*boldMeek))
+           newFOD = SBFOD(*boldMeek)
+           at1.AddBFOD(newFOD)
+           at2.AddBFOD(newFOD)
+           GlobalData.mFODs.append(newFOD)
         
         def DoubleBond(at2: Atom, bond: Bond):
             """ 
@@ -251,8 +258,9 @@ class FODStructure:
                 #Find perpendicular unit vector
                 if self.mAtom.mFreePairs == 0:
                     axis2fod = D_FFOD_Direction()
-                    self.mBFODs.append(DBFOD(dom,sub,axis2fod))
-                  
+                    GlobalData.mFODs.append(DBFOD(dom,sub,axis2fod))
+                    GlobalData.mFODs.append(DBFOD(dom,sub,-axis2fod))
+
                 #Add both FODs of the Double Bond
                 midpoint = AxialPoint_Simple(dom,sub,fugal)
                 # Determine Vertical Projection of DFFOD
@@ -261,7 +269,13 @@ class FODStructure:
                 #Add FODs
                 self.AddValFOD([dom.mPos + midpoint + axis2fod],at2,True)
                 self.AddValFOD([dom.mPos + midpoint - axis2fod],at2,True)
-        
+                #Add BFODs
+                boldMeek = BoldMeek(at1,at2)
+                newFOD = SBFOD(*boldMeek)
+                at1.AddBFOD(newFOD)
+                at2.AddBFOD(newFOD)
+                GlobalData.mFODs.append(newFOD)
+
         def AddFreeElectron(free: int):
             """
             TODO: Change conditionals as to create more concise code 

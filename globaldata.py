@@ -179,3 +179,4 @@ class GlobalData:
         }
     }
     mAtoms = []
+    mFODs = []

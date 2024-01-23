@@ -53,7 +53,7 @@ class SBFOD(BFOD):
             """
             Add the single BFOD along the axis. 
             """
-            bfod = AxialPoint_Simple(self.mBold, self.mMeek, self.mBondDir)
+            bfod = self.mBondDir*self.mBoldPortion*self.mDistance
             self.mPos = self.mBold.mPos + bfod
             self.mBoldR = self.mDistance*self.mBoldPortion
             self.mMeekR = self.mDistance*(1-self.mBoldPortion)
@@ -61,10 +61,10 @@ class SBFOD(BFOD):
 class DBFOD(BFOD):
     def __init__(self, bold: Atom, meek: Atom, heightdir: np.ndarray):
         super().__init__(bold,meek)
-        self.mBoldAngle = -1.0
-        self.mMeekAngle = -1.0
-        self.mHeight = np.array([0.0,0.0,0.0])
-
+        self.mHeight = heightdir
+        self.mBoldAngle = np.deg2rad(54.735) 
+        self.mMeekAngle = 0.0
+        self.DetermineParamenters()
 
     def CalcHeight(bold: Atom, axisproj: float):
         """
@@ -77,11 +77,22 @@ class DBFOD(BFOD):
         return sqrt(rad**2 - ((axisproj)**2))
 
     def DetermineParamenters(self):
-        pass
+        """
+        Determine the Atom-Atom-FOD angles.
+        """
+        #Measure Meek Angle
+        toFOD = self.mPos - self.mMeek.mPos
+        self.mMeekAngle = AngleBetween(self.mBondDir,toFOD)
+        #FOD Position 
+        r = self.mBold.GetMonoCovalRad()
+        delta_bond =  self.mBondDir*np.cos(self.mBoldAngle)*r
+        delta_height = self.mHeight*np.sin(self.mBoldAngle)*r
+        self.mPos = self.mBold.mPos + delta_bond + delta_height
 
     def Duplicate(self):
         """
-        Create the 
+        Create the pair FOD. It will contain the same parameters (resulting from the naive
+        solution) as the current (self) FOD, but will change the direction of the FOD.
         """    
 
 class TBFOD(BFOD):
