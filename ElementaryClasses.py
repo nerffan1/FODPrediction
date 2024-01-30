@@ -46,7 +46,7 @@ class Atom:
     def AddBond(self, atom2: int, order: int):
         self.mBonds.append(Bond(self.mI, atom2,order))
 
-    def AddBFOD(self, fod:FOD):
+    def AddBFOD(self, fod):
         self.mFODStruct.mBFODs.append(fod)
 
     def CalcSteric_test(self) -> None:
@@ -124,6 +124,7 @@ class FODStructure:
         It also accepts a secondary atom, at2, in order to add the FOD to its valence. The
         Finalize parameter is True only for the first atom that is writing the FODs; by finalizing
         we mean that the FOD is added to the list of overall FODs.
+        TODO: Currently only takes positions. Do we want to also add it here?
         """
         # Add to current valence
         for fod in fods:
@@ -158,6 +159,7 @@ class FODStructure:
         TODO: GlobalData.GetFullElecCount() Can be precalculated ahead of time and placed as a member vatrable
         """
         #Lazy loading in order to 
+        from FOD import FOD
         from BFOD import SBFOD, DBFOD, TBFOD  
        
         at1 = self.mAtom
@@ -174,12 +176,22 @@ class FODStructure:
            #Add the BFODs, new way
            boldMeek = BoldMeek(at1,at2)
            newFOD = SBFOD(*boldMeek)
-           at1.AddBFOD(newFOD)
-           at2.AddBFOD(newFOD)
-           GlobalData.mFODs.append(newFOD)
-        
-        def DoubleBond(at2: Atom, bond: Bond):
+           _AddFOD(at1,at2,newFOD)
+
+        def _AddFOD(at1: Atom, at2: Atom, fod: FOD):
+            """
+            This function adds a new FOD to the individual atoms, to the list in GlobalData, and to the FODStructure
+            TODO: Add the FOD to the Valence Structure?
             """ 
+            # The main purpose of this function is not to not duplicate the FOD in GlobalData
+            # by adding the FODs in each individual atom. This makes this class a type of 
+            # FOD manager in addition to constructing the structure.
+            at1.AddBFOD(fod)
+            at2.AddBFOD(fod)
+            GlobalData.mFODs.append(fod)          
+
+        def DoubleBond(at2: Atom, bond: Bond):
+            """
             Create the FODs representing the double bond. Currently the FOD filling is unidirectional (sequential)
             and  does not account for the next atom in the iteration to see if we can further accomodate the bonding FODs 
             """
@@ -258,8 +270,8 @@ class FODStructure:
                 #Find perpendicular unit vector
                 if self.mAtom.mFreePairs == 0:
                     axis2fod = D_FFOD_Direction()
-                    GlobalData.mFODs.append(DBFOD(dom,sub,axis2fod))
-                    GlobalData.mFODs.append(DBFOD(dom,sub,-axis2fod))
+                    _AddFOD(dom,sub, DBFOD(dom,sub,axis2fod))
+                    _AddFOD(dom,sub, DBFOD(dom,sub,-axis2fod))
 
                 #Add both FODs of the Double Bond
                 midpoint = AxialPoint_Simple(dom,sub,fugal)
@@ -269,12 +281,6 @@ class FODStructure:
                 #Add FODs
                 self.AddValFOD([dom.mPos + midpoint + axis2fod],at2,True)
                 self.AddValFOD([dom.mPos + midpoint - axis2fod],at2,True)
-                #Add BFODs
-                boldMeek = BoldMeek(at1,at2)
-                newFOD = SBFOD(*boldMeek)
-                at1.AddBFOD(newFOD)
-                at2.AddBFOD(newFOD)
-                GlobalData.mFODs.append(newFOD)
 
         def AddFreeElectron(free: int):
             """
