@@ -121,7 +121,7 @@ class FODStructure:
         self.mAtom = parent
         self.mCore = [] #A list of FODShells
         self.mValence = [] #A list of FODs
-        self.mBFODs = []
+        self.mBFODs: List[FOD] = []
         self.mfods = [] #All Finalized FODs
         self.mLastBond = 0
     
@@ -207,7 +207,7 @@ class FODStructure:
                 """
                 Return radial distance from interatomic (bonding) axis. 
                 For heterogenous atoms...
-                NOTE: Accounted for in DBFOD
+                NOTE: This functionality has been moved to class DBFOD
                 """
                 # Radius Logic
                 elecs = GlobalData.GetFullElecCount(dom.mGroup, dom.mPeriod)

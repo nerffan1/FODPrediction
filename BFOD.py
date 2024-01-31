@@ -10,7 +10,7 @@ class BFOD(FOD):
         self.mMeek = meekAt
         self.mMeekR = -1.0
         self.mBoldR = -1.0
-        self.mBoldPortion = 0.0
+        self.mBoldPortion = -1.0
         self.mBondDir = meekAt.mPos - boldAt.mPos  # Always in direction away fromBold atom
         self.mBondDist = np.linalg.norm(self.mBondDir)
         self.mBondDir = normalize(self.mBondDir)  
