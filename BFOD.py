@@ -10,8 +10,9 @@ class BFOD(FOD):
         self.mMeek = meekAt
         self.mMeekR = -1.0
         self.mBoldR = -1.0
-        self.mBondDir = meekAt.mPos - boldAt.mPos #Always in the direction leaving the Bold atom
-        self.mDistance = np.linalg.norm(self.mBondDir)
+        self.mBoldPortion = 0.0
+        self.mBondDir = meekAt.mPos - boldAt.mPos  # Always in direction away fromBold atom
+        self.mBondDist = np.linalg.norm(self.mBondDir)
         self.mBondDir = normalize(self.mBondDir)  
 
     def Calc_AxisBoldPortion(self, Zbold:int, Zmeek:int) -> float:
@@ -44,19 +45,22 @@ class BFOD(FOD):
                 return (1-g)
 
 class SBFOD(BFOD):
+    """
+    This is the Single Bonding FOD (SBFOD) class
+    """
     def __init__(self, bold: Atom, meek: Atom):
         super().__init__(bold,meek)
         self.mBoldPortion = self.Calc_AxisBoldPortion(bold.mZ, meek.mZ)
         self.DetermineParamenters()
 
     def DetermineParamenters(self):
-            """
-            Add the single BFOD along the axis. 
-            """
-            bfod = self.mBondDir*self.mBoldPortion*self.mDistance
-            self.mPos = self.mBold.mPos + bfod
-            self.mBoldR = self.mDistance*self.mBoldPortion
-            self.mMeekR = self.mDistance*(1-self.mBoldPortion)
+        """
+        Add the single BFOD along the axis. 
+        """
+        bfod = self.mBondDir*self.mBoldPortion*self.mBondDist
+        self.mPos = self.mBold.mPos + bfod
+        self.mBoldR = self.mBondDist*self.mBoldPortion
+        self.mMeekR = self.mBondDist*(1-self.mBoldPortion)
 
 class DBFOD(BFOD):
     def __init__(self, bold: Atom, meek: Atom, heightdir: np.ndarray):
@@ -66,27 +70,40 @@ class DBFOD(BFOD):
         self.mMeekAngle = 0.0
         self.DetermineParamenters()
 
-    def CalcHeight(bold: Atom, axisproj: float):
+    def GetHeight(self) -> float:
         """
         Return radial distance from interatomic (bonding) axis. 
         For heterogenous atoms....
         """
-        # Radius Logic
-        elecs = GlobalData.GetFullElecCount(bold.mGroup, bold.mPeriod)
-        rad = GlobalData.mRadii[elecs][bold.mZ]
-        return sqrt(rad**2 - ((axisproj)**2))
+        if self.mBold.mZ == self.mMeek.mZ:
+            return self.mBold.GetMonoCovalEdge()/2
+        else:
+            rad = self.mBold.GetMonoCovalRad()
+            return np.sin(self.mBoldAngle)*rad
+
+    def GetBondAxProj(self) -> float:
+        """
+        This function determines the ration between the projection of the FOD-ATOM 
+        and the Bonding Axis.
+        """
+        if self.mBold.mZ == self.mMeek.mZ:
+            return 0.5
+        else:
+            proj = np.cos(self.mBoldAngle)*self.mBold.GetMonoCovalRad()
+            return proj/self.mBondDist
 
     def DetermineParamenters(self):
         """
         Determine the Atom-Atom-FOD angles.
         """
-        #Measure Meek Angle
+        # Set BondProjection
+        self.mBoldPortion = self.GetBondAxProj()
+        # Measure Meek Angle
         toFOD = self.mPos - self.mMeek.mPos
         self.mMeekAngle = AngleBetween(self.mBondDir,toFOD)
-        #FOD Position 
-        r = self.mBold.GetMonoCovalRad()
-        delta_bond =  self.mBondDir*np.cos(self.mBoldAngle)*r
-        delta_height = self.mHeight*np.sin(self.mBoldAngle)*r
+        # Set FOD Position 
+        delta_bond = self.mBondDir*self.mBondDist*self.mBoldPortion
+        delta_height = self.mHeight*self.GetHeight()
         self.mPos = self.mBold.mPos + delta_bond + delta_height
 
     def Duplicate(self):

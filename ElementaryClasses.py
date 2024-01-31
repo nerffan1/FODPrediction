@@ -30,16 +30,24 @@ class Atom:
         self.mPeriod = int(GlobalData.GetZAtt(self.mZ, "Period" ))
         self.mGroup = int(GlobalData.GetZAtt(self.mZ, "Group" ))
         self.mValCount = self._FindValence()
+
         #Undetermined Attributes
         self.mSteric = 0
         self.mFreePairs = 0
-        self.mCharge = 0 #Temporarily zero for all atoms. Ionic atoms can be dealt with in the future
+        self.mCharge = 0  # In the future can be changed 
         self.mBonds = []
         self.mFODStruct = FODStructure(self)
         self.mCompleteVal = False
         
     #Parameters from GlobalData
     def GetMonoCovalRad(self): 
+        elecs = GlobalData.GetFullElecCount(self.mGroup, self.mPeriod)
+        return GlobalData.mRadii[elecs][self.mZ]
+
+    def GetMonoCovalEdge(self):
+        """
+        Get the FOD edge distance of a monoatomic calculation
+        """
         elecs = GlobalData.GetFullElecCount(self.mGroup, self.mPeriod)
         return GlobalData.mRadii[elecs][self.mZ]
 
