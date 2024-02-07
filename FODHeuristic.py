@@ -105,15 +105,6 @@ class Molecule:
             # Add the Bonding FODs
             self.mAtoms[atom1].mFODStruct.mBFODs.append
             boldMeek = BoldMeek(self.mAtoms[atom1],self.mAtoms[atom2])
-            if order == 1:
-                pass
-            elif order == 2:
-                #self.mAtoms[atom1].AddBFOD(DBFOD(*boldMeek))
-                #self.mAtoms[atom2].AddBFOD(DBFOD(*boldMeek))
-                pass
-            elif order == 3:
-                self.mAtoms[atom1].AddBFOD(TBFOD(*boldMeek))
-                self.mAtoms[atom2].AddBFOD(TBFOD(*boldMeek))
  
     def CheckStericity(self):
         """

@@ -13,7 +13,6 @@ class BFOD(FOD):
         self.mBoldPortion = -1.0
         self.mBondDir = meekAt.mPos - boldAt.mPos  # Always in direction away fromBold atom
         self.mBondDist = np.linalg.norm(self.mBondDir)
-        self.mBondDir = normalize(self.mBondDir)  
 
     def Calc_AxisBoldPortion(self, Zbold:int, Zmeek:int) -> float:
             """
@@ -44,6 +43,15 @@ class BFOD(FOD):
             else:
                 return (1-g)
 
+    def IsMonoatomic(self) -> bool:
+        """
+        This function returns whether or not we are dealing with a monoatomic bond
+        """
+        if self.mMeek.mZ == self.mBold.mZ:
+            return True
+        else:
+            return False
+
 class SBFOD(BFOD):
     """
     This is the Single Bonding FOD (SBFOD) class
@@ -57,7 +65,7 @@ class SBFOD(BFOD):
         """
         Add the single BFOD along the axis. 
         """
-        bfod = self.mBondDir*self.mBoldPortion*self.mBondDist
+        bfod = self.mBondDir*self.mBoldPortion
         self.mPos = self.mBold.mPos + bfod
         self.mBoldR = self.mBondDist*self.mBoldPortion
         self.mMeekR = self.mBondDist*(1-self.mBoldPortion)
@@ -68,7 +76,7 @@ class DBFOD(BFOD):
         self.mHeight = heightdir
         self.mBoldAngle = np.deg2rad(54.735) 
         self.mMeekAngle = 0.0
-        self.DetermineParamenters()
+        self.DetermineParameters()
 
     def GetHeight(self) -> float:
         """
@@ -92,7 +100,7 @@ class DBFOD(BFOD):
             proj = np.cos(self.mBoldAngle)*self.mBold.GetMonoCovalRad()
             return proj/self.mBondDist
 
-    def DetermineParamenters(self):
+    def DetermineParameters(self):
         """
         Determine the Atom-Atom-FOD angles.
         """
@@ -102,8 +110,9 @@ class DBFOD(BFOD):
         toFOD = self.mPos - self.mMeek.mPos
         self.mMeekAngle = AngleBetween(self.mBondDir,toFOD)
         # Set FOD Position 
-        delta_bond = self.mBondDir*self.mBondDist*self.mBoldPortion
+        delta_bond = self.mBondDir*self.mBoldPortion
         delta_height = self.mHeight*self.GetHeight()
+        # Finalize parameters
         self.mPos = self.mBold.mPos + delta_bond + delta_height
 
     def Duplicate(self):
@@ -113,5 +122,45 @@ class DBFOD(BFOD):
         """    
 
 class TBFOD(BFOD):
-    def __init__(self,bold: Atom, meek: Atom):
+    def __init__(self, bold: Atom, meek: Atom, heightdir: np.ndarray):
         super().__init__(bold,meek)
+        self.mHeight = heightdir 
+        self.mBoldAngle = np.deg2rad(54.735) 
+        self.mMeekAngle = 0.0
+        self.DetermineParameters()
+
+    def DetermineParameters(self):
+        """
+        This function determines the distance of the TBFOD away from the bonding
+        axis. 
+        """
+        # Determine the location of the FOD
+        rad = self.mBold.GetMonoCovalRad()
+        a = self.mBold.GetMonoCovalEdge()
+        c = self.mBondDist 
+        # This section modifies the height depending on the nature of the monoatomic bond
+        # 2nd period elements tend to tighten BFODs.
+        if self.IsMonoatomic():
+            if self.mBold.mPeriod == 2 & self.mMeek.mPeriod == 2:
+                theta = np.arccos((c/2)/rad)
+            elif self.mBold.mPeriod > 2 & self.mMeek.mPeriod > 2:
+                theta = np.arctan(rad/(c/2)) 
+        else:
+            #theta = np.arcsin((a/2)/rad) 
+            theta = np.deg2rad(54.735)
+        dr = normalize(self.mBondDir)*rad*np.cos(theta) 
+        dr += self.mHeight*rad*np.sin(theta)
+        self.mPos = self.mBold.mPos + dr
+        
+        # Determine the Meek Atom angle
+        self.DetermineMeek()
+
+    def DetermineMeek(self):
+        """
+        Determines the Bond-Meek-FOD angle. I.e., the angle between the bonding axis
+        and the Meek-FOD vector.
+        """
+        self.mMeekAngle = AngleBetween(-self.mBondDir, self.mPos - self.mMeek.mPos)
+
+    def DetermineHeight(self):
+        pass

@@ -49,7 +49,13 @@ class Atom:
         Get the FOD edge distance of a monoatomic calculation
         """
         elecs = GlobalData.GetFullElecCount(self.mGroup, self.mPeriod)
-        return GlobalData.mRadii[elecs][self.mZ]
+        return GlobalData.mVert[elecs][self.mZ]
+
+    def GetValenceFODs(self):
+        return self.mFODStruct.mValence
+
+    def GetBonds(self):
+        return self.mBonds
 
     def AddBond(self, atom2: int, order: int):
         self.mBonds.append(Bond(self.mI, atom2,order))
@@ -121,7 +127,8 @@ class FODStructure:
         self.mAtom = parent
         self.mCore = [] #A list of FODShells
         self.mValence = [] #A list of FODs
-        self.mBFODs: List[FOD] = []
+        self.mBFODs = []
+        self.mFFODs: List[FOD] = []
         self.mfods = [] #All Finalized FODs
         self.mLastBond = 0
     
@@ -171,7 +178,6 @@ class FODStructure:
         from BFOD import SBFOD, DBFOD, TBFOD  
        
         at1 = self.mAtom
-        
 
         def SingleBond(at2: Atom):
            """
@@ -194,9 +200,16 @@ class FODStructure:
             # The main purpose of this function is not to not duplicate the FOD in GlobalData
             # by adding the FODs in each individual atom. This makes this class a type of 
             # FOD manager in addition to constructing the structure.
+            # The reason why we don't load FODs directly
+            # is because we don't know whether at1 or at2
+            # is the self.mAtom
             at1.AddBFOD(fod)
             at2.AddBFOD(fod)
             GlobalData.mFODs.append(fod)          
+        
+        def _AddFFOD(ffod: FOD):
+            self.mFFODs.append(ffod)
+            GlobalData.mFODs.append(ffod)          
 
         def DoubleBond(at2: Atom, bond: Bond):
             """
@@ -307,6 +320,7 @@ class FODStructure:
                 free_dir = normalize(free_dir)
 
             if free == 1:
+                from FFOD import SFFOD
                 # For a single atom
                 if len(self.mAtom.mBonds) == 3 :
                     dr = vector_for_cross.sum(0)
@@ -371,6 +385,7 @@ class FODStructure:
         def PlaceFODs_Triple(fugal: np.ndarray, a: float, rad: float, at2: Atom, c: float):
             """ This function create an FOD at a certain distance, based of a and rad,
             which are quantities assumed to dominate the interaction.
+            NOTE: Has been implemented in TBFOD Class. Deprecated
             """
             equilat_r =a/sqrt(3)
             if at1.mZ == at2.mZ:
@@ -398,6 +413,17 @@ class FODStructure:
             #Place FODs
             rot_fods = PlaceFODs_Triple(fugal, a, rad, at2, c)
             self.AddValFOD(atom.mPos + rot_fods,at2,True)
+            # Place BFODs, for new implementation
+            bonddir = tofrom(at2.mPos,at1.mPos)
+            boldmeek = BoldMeek(at1,at2)
+            dir0 = RandomPerpDir(bonddir)
+            norms = RotateNormals(3, dir0, normalize(bonddir)) 
+            fod1 = TBFOD(*boldmeek, norms[0])
+            fod2 = TBFOD(*boldmeek, norms[1])
+            fod3 = TBFOD(*boldmeek, norms[2])
+            _AddFOD(at1,at2,fod1)
+            _AddFOD(at1,at2,fod2)
+            _AddFOD(at1,at2,fod3)
 
         def AddBFODs():
             """
@@ -414,12 +440,14 @@ class FODStructure:
                         TripleBond(bonded_at)
 
         def AddFFODs():
+            from FFOD import SFFOD, DFFOD, TFFOD 
             if self.mAtom.mFreePairs == 2:
                 if self.mAtom.mSteric >= 3:
                     AddFreeElectron(2)
             elif self.mAtom.mFreePairs == 1:
                 if self.mAtom.mSteric >= 2:
                     AddFreeElectron(1)
+                    _AddFFOD(SFFOD(self.mAtom))
             elif self.mAtom.mFreePairs == 3:
                 AddFreeElectron(3)
 

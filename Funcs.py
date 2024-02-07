@@ -35,6 +35,17 @@ def RotatePoints(n:int,fod0:np.ndarray,axis:np.ndarray) -> List[np.ndarray]:
         fodsRotated.append(fod)
     return fodsRotated
 
+def RotateNormals(n: int, firstdir: np.ndarray, axis: np.ndarray) -> List[np.ndarray]:
+    assert len(axis) == 3, "The array must have 3 dimensions"
+    assert len(firstdir) == 3, "The array must have 3 dimensions"
+    fodsRotated = [firstdir]
+    step = (2*np.pi)/n
+    for i in range(1,n):
+        rot = R.from_rotvec((step*i)*axis)
+        fod = np.matmul(rot.as_matrix(),firstdir)
+        fodsRotated.append(fod)
+    return fodsRotated
+
 def RandomPerpDir(ref: np.ndarray) -> np.ndarray:
     """
     This function returns a random perpendicular direction with respect to your reference direction.
@@ -47,12 +58,11 @@ def RandomPerpDir(ref: np.ndarray) -> np.ndarray:
     else:
         b_z = -(10*ref[0] + 2*ref[1])/dir[2]
         randperp = np.array([10,2,b_z])
-        randperp /= np.linalg.norm(randperp)
-        return randperp     
+        return normalize(randperp)     
     
 def AngleBetween(A: np.ndarray, B: np.ndarray) -> float:
     """
-    Returns the angle between the 
+    Returns the angle between vector A and vector B using simple dot product properties. 
     """
     ab = np.dot(A,B)
     ab_abs = np.linalg.norm(A)*np.linalg.norm(B)
@@ -60,3 +70,4 @@ def AngleBetween(A: np.ndarray, B: np.ndarray) -> float:
 
 ####LAMBDA FUNCTIONS######
 normalize = lambda v: v/np.linalg.norm(v)
+tofrom = lambda v, w: v - w
