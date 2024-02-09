@@ -63,6 +63,23 @@ class Atom:
     def AddBFOD(self, fod):
         self.mFODStruct.mBFODs.append(fod)
 
+    def AverageBFODDir(self):
+        """
+        Returns the sum of all the BondDir of all owned BFODs. 
+        It is of particular use for finding the direction of FFODs.
+        """
+        resultant = np.zeros(3)
+        bfods = self.mFODStruct.mBFODs
+        for bfod in bfods:
+            # If the ffod atom is Meek, then the vector points in its direction! So, no issue here!
+            if self == bfod.mMeek:
+                resultant += bfod.mBondDir
+            else: 
+                # When the atom is Bold, the BondDir points away, so you must get the negative
+                resultant -= bfod.mBondDir
+        # Return the average
+        return resultant
+
     def CalcSteric_test(self) -> None:
         """
         TODO: Need to account for systems where the valence electrons + bonding FODs

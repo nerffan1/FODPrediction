@@ -68,6 +68,7 @@ def AngleBetween(A: np.ndarray, B: np.ndarray) -> float:
     ab_abs = np.linalg.norm(A)*np.linalg.norm(B)
     return np.arccos(ab/(ab_abs))
 
+
 ####LAMBDA FUNCTIONS######
 normalize = lambda v: v/np.linalg.norm(v)
 tofrom = lambda v, w: v - w
