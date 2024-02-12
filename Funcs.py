@@ -56,7 +56,7 @@ def RandomPerpDir(ref: np.ndarray) -> np.ndarray:
     elif ref[1] == 0: return np.array([0.0,1.0,0.0])
     elif ref[2] == 0: return np.array([0.0,0.0,1.0])
     else:
-        b_z = -(10*ref[0] + 2*ref[1])/dir[2]
+        b_z = -(10*ref[0] + 2*ref[1])/ref[2]
         randperp = np.array([10,2,b_z])
         return normalize(randperp)     
     

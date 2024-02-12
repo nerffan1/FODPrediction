@@ -101,10 +101,6 @@ class GlobalData:
     #This ladder is based of the 
     mElecConfLadder= [2,2,6,2,6,2,10,6,2,10,6,2,10,6]
     #Geometries for known shell structures
-    mTetraGeo = [[0.0,0.0,1.0],
-                [sqrt(8/9), 0.0, -1/3],
-                [-sqrt(2/9),sqrt(2/3), -1/3],
-                [-sqrt(2/9),-sqrt(2/3), -1/3]]
     mTriPlane = [[0,sqrt(3)/2,0],
                  [-sqrt(3)/2,-sqrt(3)/2,0],
                  [-sqrt(3)/2,-sqrt(3)/2,0]]

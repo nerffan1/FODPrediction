@@ -1,5 +1,6 @@
 #RDKit for BondPrediction
 from rdkit import Chem
+from rdkit.Chem import Mol
 from rdkit.Chem import rdDetermineBonds
 from rdkit.Chem import rdmolops
 from rdkit.Chem import AllChem
@@ -13,13 +14,18 @@ from BFOD import *
 
 class Molecule:
     def __init__(self, xyzfile) -> None:
-        self.mFile = xyzfile
-        self.rdmol = Chem.MolFromXYZFile(xyzfile)
-        self.mComment = ""
         self.mAtoms: List[Atom] = []
-        GlobalData.mAtoms = self.mAtoms
+        self.mFile = xyzfile
         self.mBonds = []
-        self.__LoadXYZ()
+        # Load pdb or xyz
+        if xyzfile[-3:] == "pdb":
+            self.rdmol = Chem.MolFromPDBFile(xyzfile)
+            self.__LoadPDB()
+            exit
+        else:
+            self.rdmol = Chem.MolFromXYZFile(xyzfile)
+            self.__LoadXYZ()
+        GlobalData.mAtoms = self.mAtoms
         self.__RD_Bonds()
         self.CheckStericity()
         self.CalculateFODs()
@@ -41,7 +47,7 @@ class Molecule:
         for atom in self.mAtoms:
             atom.mFODStruct.PrepareShells(self.mAtoms)
             #Will change this feature soon
-            atom.mFODStruct.FinalizeFODs()
+            #atom.mFODStruct.FinalizeFODs()
     
     def CreateXYZ(self):
         """
@@ -83,7 +89,17 @@ class Molecule:
             self.mAtoms.append(Atom(i, coor[0],atom_xyz)) #Name and Position
         XYZ.close()
         print(self.mComment) # Print the comment from the XYZ file 
-    
+
+    def __LoadPDB(self):
+        """
+        Credit to Betelgeuse in stackoverflow describing how to get this:
+        https://stackoverflow.com/questions/71915443/rdkit-coordinates-for-atoms-in-a-molecule
+        """
+        for i, atom in enumerate(self.rdmol.GetAtoms()):
+            position = self.rdmol.GetConformer().GetAtomPosition(i)
+            pos = [position.x, position.y, position.z]
+            self.mAtoms.append(Atom(i, atom.GetSymbol(), pos))
+
     def __RD_Bonds(self):
         """
         Calculate Bonds using the RDKit library.

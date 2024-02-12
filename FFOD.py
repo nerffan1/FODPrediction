@@ -1,17 +1,16 @@
 from Funcs import *
 from FOD import *
 from ElementaryClasses import *
-from globaldata import *
-from BFOD import BFOD
-
+from copy import copy
 class FFOD(FOD):
-    def __init__(self, atom: Atom):
-        super().__init__()
-        self.mPos = np.zeros(3)
+    def __init__(self, atom: Atom, HeightDir = np.zeros(3)):
+        super().__init__(copy(atom.mPos))
         self.mAtom = atom
         self.mR = -1.0
-        self.mFreeDir = atom.AverageBFODDir()/3
-    
+        self.mAngle = 0.0
+        self.mHeight = HeightDir
+        self.mFreeDir = atom.AverageBFODDir()
+
 class SFFOD(FFOD):
     def __init__(self, atom: Atom):
         super().__init__(atom)
@@ -37,7 +36,7 @@ class SFFOD(FFOD):
             else:
                 dr = self.mFreeDir
         # Set position
-        self.mPos = self.mAtom.mPos + dr
+        self.mPos += dr
 
     ### Measurement ###
     # Description: This is after associating an FOD point from an optimized output to a "predicted" 
@@ -46,27 +45,85 @@ class SFFOD(FFOD):
         return np.linalg.norm(self.mPos - self.mAtom.mPos)
 
 class DFFOD(FFOD):
-    def __init__(self, atom: Atom):
-        super.__init__(atom)
+    def __init__(self, atom: Atom, heightdir: np.ndarray):
+        super().__init__(atom, heightdir)
+        self.DetermineParameters()
 
-    def DetermineParameters():
-        pass
+    def DetermineParameters(self):
+        #Direction away from atom, on plane of other bonds, or neighboring atoms
+        self.mR = self.DetermineR()
+        self.mPos += normalize(self.mFreeDir)*self.mR*np.cos(self.mAngle)
+        self.mPos += self.mHeight*self.mR*np.sin(self.mAngle)
+
+    def DetermineR(self) -> float:
+        # Determine the angle at which the DFFODs open! 220 rule
+        neighbors = self.mAtom.GetVectoNeighbors()
+        bfod = self.mAtom.GetBFODs()[-1]
+        if self.mAtom == bfod.mMeek:
+            F = bfod.mMeekR
+        else:
+            F = bfod.mBoldR
+
+        if len(self.mAtom.mBonds) == 2:
+            theta = (np.deg2rad(220) - AngleBetween(*neighbors))/2
+        else: 
+            theta = (np.deg2rad(220) - AngleBetween(*self.mAtom.GetVec2BFODs()))/2
+        self.mAngle = theta
+
+        if self.mAtom.mPeriod < 3:
+            # FreeDirection and Atom-BFOD Angle, plust lengths needed for determination
+            vec2bfod = bfod.mPos - self.mAtom.mPos
+            phi = AngleBetween(self.mFreeDir,vec2bfod) 
+            E = self.mAtom.GetMonoCovalEdge()
+            
+            # Finalize 
+            return  np.sqrt(E**2 - F**2 + 2*F*E*np.cos(phi)*np.cos(theta))
+        else:
+            return F
 
 class TFFOD(FFOD):
     def __init__(self, atom: Atom, heightdir: np.ndarray):
-        super.__init__(atom)
-        self.mHeight = heightdir
-        self.mAngle = 0.0
+        super().__init__(atom, heightdir)
         self.DetermineParameters()
 
     def DetermineParameters(self):
         # Determine FreeDir projection
         if self.mAtom.mPeriod < 3:
-            elecs = GlobalData.GetFullElecCount(self.mGroup, self.mPeriod)
-            dFD = normalize(self.mFreeDir)*g
+            h = self.DetermineHeight_Tight()
         else:
-            pass
-        # Determine Height
-        # Finalize Position
+            # Get Free_direction shift
+            h = self.DetermineHeight()
+        # Finalize Position by giving height and bonding direction offsets
+        self.mPos += self.mHeight*h
+        self.mPos += self.mFreeDir  # This was set in DetermineHeight()
         # Measure angle
-        self.mAngle = AngleBetween(self.mFreeDir,self.mPos-self.mAtom)
+        self.mAngle = AngleBetween(self.mFreeDir,self.mPos-self.mAtom.mPos)
+
+    def DetermineHeight_Tight(self) -> float:
+        # This length is the radius of a circumscribed circle on a triangle
+        # of sides equal to the Atom-SBFOD distance.
+        h = self.GetSBFODDist()/sqrt(3)
+        self.mFreeDir = normalize(self.mFreeDir)*h/np.tan(np.deg2rad(70.52))
+        return h
+
+    def DetermineHeight(self) -> float:
+        """
+        Determines the "height" of the FFOD: The distance from the bonding axis
+        to the FFOD
+        """
+        # Use the distance of last shell to place this shell
+        proj_freedir = self.mAtom.GetLastAtomRadius()
+        # Changing the mfreedir to end at projection point
+        self.mFreeDir = normalize(self.mFreeDir)*proj_freedir
+        # For the FOD-Atom distance use the distance to SBFOD in atom valence
+        l = self.GetSBFODDist()
+        # Return the height
+        return sqrt(l**2 - proj_freedir**2)
+    
+    def GetSBFODDist(self) -> float:
+        if len(self.mAtom.mBonds) == 1:
+            bfod = self.mAtom.GetBFODs()[0]
+            if bfod.mMeek == self.mAtom:
+                return bfod.mMeekR
+            else:
+                return bfod.mBoldR

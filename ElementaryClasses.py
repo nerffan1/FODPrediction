@@ -51,22 +51,44 @@ class Atom:
         elecs = GlobalData.GetFullElecCount(self.mGroup, self.mPeriod)
         return GlobalData.mVert[elecs][self.mZ]
 
+    def GetLastAtomRadius(self):
+        dist = np.linalg.norm(self.mFODStruct.mCore[-1].mPos - self.mPos)
+        return dist
+
     def GetValenceFODs(self):
         return self.mFODStruct.mValence
 
     def GetBonds(self):
         return self.mBonds
 
+    def GetBFODs(self):
+        return self.mFODStruct.mBFODs
+
     def AddBond(self, atom2: int, order: int):
         self.mBonds.append(Bond(self.mI, atom2,order))
 
     def AddBFOD(self, fod):
         self.mFODStruct.mBFODs.append(fod)
+    
+    def GetVec2BFODs(self):
+        return [self.mPos - x.mPos for x in self.mFODStruct.mBFODs]
+
+    def GetVectoNeighbors(self):
+        """
+        This function returns the sum of the vectors that start on
+        neighboring (bonded) atoms and end on current atom.
+        """
+        freedir = []
+        for bond in self.mBonds:
+            at2 = GlobalData.mAtoms[bond.mAtoms[1]]
+            freedir.append(at2.mPos - self.mPos)
+        return freedir
 
     def AverageBFODDir(self):
         """
         Returns the sum of all the BondDir of all owned BFODs. 
         It is of particular use for finding the direction of FFODs.
+        TODO: Might require reimplementation for cases where we just want the ATOM-ATOM vector, instead of the FOD vectors?
         """
         resultant = np.zeros(3)
         bfods = self.mFODStruct.mBFODs
@@ -78,7 +100,7 @@ class Atom:
                 # When the atom is Bold, the BondDir points away, so you must get the negative
                 resultant -= bfod.mBondDir
         # Return the average
-        return resultant
+        return resultant/len(self.mFODStruct.mBFODs)
 
     def CalcSteric_test(self) -> None:
         """
@@ -143,6 +165,7 @@ class FODStructure:
     def __init__(self, parent: Atom):
         self.mAtom = parent
         self.mCore = [] #A list of FODShells
+        self.mCoreShells = []
         self.mValence = [] #A list of FODs
         self.mBFODs = []
         self.mFFODs: List[FOD] = []
@@ -175,6 +198,13 @@ class FODStructure:
                     self.mfods = fod  
                 else:
                     self.mfods = np.vstack((self.mfods,fod))
+
+    def _AddCoreShell(self, shell):
+        self.mCoreShells.append(shell)
+        # Add individual FODs to the electronic structure
+        for fod in shell.mfods:
+            GlobalData.mFODs.append(fod)
+            self.mCore.append(fod)
 
     def PrepareShells(self, atoms: List[Atom]):
         """
@@ -225,6 +255,9 @@ class FODStructure:
             GlobalData.mFODs.append(fod)          
         
         def _AddFFOD(ffod: FOD):
+            """
+            TODO: Put this on a bigger scope
+            """
             self.mFFODs.append(ffod)
             GlobalData.mFODs.append(ffod)          
 
@@ -321,6 +354,7 @@ class FODStructure:
                 self.AddValFOD([dom.mPos + midpoint - axis2fod],at2,True)
 
         def AddFreeElectron(free: int):
+            freedir = []
             """
             TODO: Change conditionals as to create more concise code 
             TODO: Create a series of variables for chosen constants, NO magic numbers
@@ -353,32 +387,37 @@ class FODStructure:
                 self.AddValFOD([self.mAtom.mPos+dr],False,True)
 
             elif free == 2:
-                #Direction away from atom, on plane of other bonds, or neighboring atoms
-                axis2fod = np.cross(*vector_for_cross)
-                axis2fod = normalize(axis2fod)
-                #Get angle to atoms of FFODs (ffod-atom-ffod)
-                theta = np.deg2rad(220) - AngleBetween(*vector_for_cross)
-                theta /= 2 
+                # #direction away from atom, on plane of other bonds, or neighboring atoms
+                # axis2fod = np.cross(*self.mAtom.GetVectoNeighbors())
+                # axis2fod = normalize(axis2fod)
+                # #get angle to atoms of ffods (ffod-atom-ffod)
+                # theta = np.deg2rad(220) - anglebetween(*vector_for_cross)
+                # theta /= 2 
 
-                if len(self.mValence) == 2: #Might be different for FODs or for number of bonds
-                    #Determine the free direction
-                    dxy  = AddNormals(vector_for_cross)
-                    if len(at1.mBonds) == 2:
-                        dxy = at1.mPos - [atoms[bonds.mAtoms[1]].mPos for bonds in at1.mBonds]
-                        dxy = dxy.sum(0)
-                        dxy = normalize(dxy)
+                # if len(self.mvalence) == 2: #might be different for fods or for number of bonds
+                #     #determine the free direction
+                #     dxy  = addnormals(vector_for_cross)
+                #     if len(at1.mbonds) == 2:
+                #         dxy = at1.mpos - [atoms[bonds.matoms[1]].mpos for bonds in at1.mbonds]
+                #         dxy = dxy.sum(0)
+                #         dxy = normalize(dxy)
 
-                    #TODO: Must determine logic to choose distance, based of bonding as well 
-                    Rad = np.linalg.norm(vector_for_cross[0]) # Remember these are the atom-BFOD distances
-                    dxy *= Rad*np.cos(theta)
-                    axis2fod *= Rad*np.sin(theta)
-                elif len(self.mValence) == 1:
-                    #Add both FODs of the Double Bond
-                    axis2fod *= GlobalData.mVert[fulle][self.mAtom.mZ]/2
-                    dxy = self.mAtom.mPos + free_dir*np.linalg.norm(axis2fod)/np.tan(np.deg2rad(54.735))
+                #     #todo: must determine logic to choose distance, based of bonding as well 
+                #     rad = np.linalg.norm(vector_for_cross[0]) # remember these are the atom-bfod distances
+                #     dxy *= rad*np.cos(theta)
+                #     axis2fod *= rad*np.sin(theta)
+                # elif len(self.mvalence) == 1:
+                #     #add both fods of the double bond
+                #     axis2fod *= globaldata.mvert[fulle][self.matom.mz]/2
+                #     dxy = self.matom.mpos + free_dir*np.linalg.norm(axis2fod)/np.tan(np.deg2rad(54.735))
                 
-                self.AddValFOD([self.mAtom.mPos + dxy + axis2fod],False,True)
-                self.AddValFOD([self.mAtom.mPos + dxy - axis2fod],False,True)
+                # self.AddValFOD([self.mAtom.mPos + dxy + axis2fod],False,True)
+                # self.AddValFOD([self.mAtom.mPos + dxy - axis2fod],False,True)
+                heightdir =  np.cross(*[fod.mPos for fod in self.mBFODs],axis=0)
+                heightdir = normalize(heightdir)
+                from FFOD import DFFOD
+                _AddFFOD(DFFOD(at1,heightdir))
+                _AddFFOD(DFFOD(at1,-heightdir))
 
             elif free == 3:
                 if self.mAtom.mZ < 10:
@@ -398,6 +437,15 @@ class FODStructure:
 
                 #Translate to the atom of interest, and add to Valence 
                 self.AddValFOD(at1.mPos + rot_fods,False,True)
+                # --------------------------------------------
+                # TODO: Remove stuff above
+                from FFOD import TFFOD
+                bonddir = tofrom(at2.mPos,at1.mPos)
+                dir0 = RandomPerpDir(bonddir)
+                norms = RotateNormals(3, dir0, normalize(bonddir)) 
+                _AddFFOD(TFFOD(at1, norms[0]))
+                _AddFFOD(TFFOD(at1, norms[1]))
+                _AddFFOD(TFFOD(at1, norms[2]))
 
         def PlaceFODs_Triple(fugal: np.ndarray, a: float, rad: float, at2: Atom, c: float):
             """ This function create an FOD at a certain distance, based of a and rad,
@@ -463,7 +511,7 @@ class FODStructure:
                     AddFreeElectron(2)
             elif self.mAtom.mFreePairs == 1:
                 if self.mAtom.mSteric >= 2:
-                    AddFreeElectron(1)
+                  #  AddFreeElectron(1)
                     _AddFFOD(SFFOD(self.mAtom))
             elif self.mAtom.mFreePairs == 3:
                 AddFreeElectron(3)
@@ -474,16 +522,16 @@ class FODStructure:
             if core_elec != 0:
                 for shell in GlobalData.mGeo_Ladder[core_elec]:
                     if shell == 'point':
-                        self.mCore.append(Shells.Point())
+                        self._AddCoreShell(Shells.Point(self.mAtom))
                     elif shell == 'tetra':
-                        self.mCore.append(Shells.Tetra(10, at1.mZ))
+                        self._AddCoreShell(Shells.Tetra(self.mAtom, 10))
         
         #Prepare the valence shell first, since it will help determine the
         # orientation of the inner shells
         AddBFODs()
-        AddFFODs()
         AddCoreElectrons()
-             
+        AddFFODs()
+            
     def FinalizeFODs(self):
         """
         Add all FODs in the FODStructure, to the atom, so that they can be
