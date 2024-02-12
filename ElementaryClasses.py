@@ -204,7 +204,7 @@ class FODStructure:
         # Add individual FODs to the electronic structure
         for fod in shell.mfods:
             GlobalData.mFODs.append(fod)
-            self.mCore.append(fod)
+            self.mCore.append(fod) # TODO: Do we need this ?
 
     def PrepareShells(self, atoms: List[Atom]):
         """
@@ -228,12 +228,8 @@ class FODStructure:
 
         def SingleBond(at2: Atom):
            """
-           Set parameters from Single Bond.
-           -Accounted for in SBFOD 
+           Creates a SBFOD along the axis. The heuristics is found in SBFOD Class
            """
-           dom,weak,dir = BoldMeekDir(at1,at2,True)
-           bfod = AxialPoint_Simple(dom, weak, dir)
-           self.AddValFOD([dom.mPos + bfod], at2, True)
            #Add the BFODs, new way
            boldMeek = BoldMeek(at1,at2)
            newFOD = SBFOD(*boldMeek)
@@ -266,16 +262,6 @@ class FODStructure:
             Create the FODs representing the double bond. Currently the FOD filling is unidirectional (sequential)
             and  does not account for the next atom in the iteration to see if we can further accomodate the bonding FODs 
             """
-            def D_Bond_Height(dom: Atom, axisproj: float):
-                """
-                Return radial distance from interatomic (bonding) axis. 
-                For heterogenous atoms...
-                NOTE: This functionality has been moved to class DBFOD
-                """
-                # Radius Logic
-                elecs = GlobalData.GetFullElecCount(dom.mGroup, dom.mPeriod)
-                rad = GlobalData.mRadii[elecs][dom.mZ]
-                return sqrt(rad**2 - ((axisproj)**2))
                             
             def HeightDir_fromNeighborBFODs():
                 """
@@ -335,7 +321,7 @@ class FODStructure:
 
             #Information
             axis2fod = np.ndarray(3)
-            dom,sub,fugal = BoldMeekDir(at1,at2, True)
+            dom,sub= BoldMeek(at1,at2)
 
             if GlobalData.GetFullElecCount(self.mAtom.mGroup,self.mAtom.mPeriod) <= 18:
                 #Find perpendicular unit vector
@@ -344,75 +330,17 @@ class FODStructure:
                     _AddFOD(dom,sub, DBFOD(dom,sub,axis2fod))
                     _AddFOD(dom,sub, DBFOD(dom,sub,-axis2fod))
 
-                #Add both FODs of the Double Bond
-                midpoint = AxialPoint_Simple(dom,sub,fugal)
-                # Determine Vertical Projection of DFFOD
-                axis2fod *= D_Bond_Height(dom, np.linalg.norm(midpoint))
-
-                #Add FODs
-                self.AddValFOD([dom.mPos + midpoint + axis2fod],at2,True)
-                self.AddValFOD([dom.mPos + midpoint - axis2fod],at2,True)
-
         def AddFreeElectron(free: int):
-            freedir = []
             """
             TODO: Change conditionals as to create more concise code 
             TODO: Create a series of variables for chosen constants, NO magic numbers
             """
-            #Variables
-            vector_for_cross = []
-            fulle = GlobalData.GetFullElecCount(self.mAtom.mGroup, self.mAtom.mPeriod)
-            vector_for_cross = self.mAtom.mPos - [fod for fod in self.mValence]
-                
             if len(self.mAtom.mBonds) == 1:
                 #Useful Information
                 at2 = atoms[self.mAtom.mBonds[0].mAtoms[1]]
                 free_dir = self.mAtom.mPos - at2.mPos
-                free_dir = normalize(free_dir)
 
-            if free == 1:
-                from FFOD import SFFOD
-                # For a single atom
-                if len(self.mAtom.mBonds) == 3 :
-                    dr = vector_for_cross.sum(0)
-                elif len(self.mAtom.mBonds) == 2 :
-                    free_dir = AddNormals(vector_for_cross)
-                    dr = free_dir*GlobalData.mRadii[fulle][self.mAtom.mZ]
-                elif len(self.mAtom.mBonds) == 1:
-                    l = GlobalData.mVert[fulle][self.mAtom.mZ]
-                    if (self.mAtom.mPeriod < 3):
-                        dr = free_dir*l/sqrt(8) #Place at midsphere distance
-                    else:
-                        dr = free_dir*GlobalData.mRadii[fulle][self.mAtom.mZ]
-                self.AddValFOD([self.mAtom.mPos+dr],False,True)
-
-            elif free == 2:
-                # #direction away from atom, on plane of other bonds, or neighboring atoms
-                # axis2fod = np.cross(*self.mAtom.GetVectoNeighbors())
-                # axis2fod = normalize(axis2fod)
-                # #get angle to atoms of ffods (ffod-atom-ffod)
-                # theta = np.deg2rad(220) - anglebetween(*vector_for_cross)
-                # theta /= 2 
-
-                # if len(self.mvalence) == 2: #might be different for fods or for number of bonds
-                #     #determine the free direction
-                #     dxy  = addnormals(vector_for_cross)
-                #     if len(at1.mbonds) == 2:
-                #         dxy = at1.mpos - [atoms[bonds.matoms[1]].mpos for bonds in at1.mbonds]
-                #         dxy = dxy.sum(0)
-                #         dxy = normalize(dxy)
-
-                #     #todo: must determine logic to choose distance, based of bonding as well 
-                #     rad = np.linalg.norm(vector_for_cross[0]) # remember these are the atom-bfod distances
-                #     dxy *= rad*np.cos(theta)
-                #     axis2fod *= rad*np.sin(theta)
-                # elif len(self.mvalence) == 1:
-                #     #add both fods of the double bond
-                #     axis2fod *= globaldata.mvert[fulle][self.matom.mz]/2
-                #     dxy = self.matom.mpos + free_dir*np.linalg.norm(axis2fod)/np.tan(np.deg2rad(54.735))
-                
-                # self.AddValFOD([self.mAtom.mPos + dxy + axis2fod],False,True)
-                # self.AddValFOD([self.mAtom.mPos + dxy - axis2fod],False,True)
+            if free == 2:
                 heightdir =  np.cross(*[fod.mPos for fod in self.mBFODs],axis=0)
                 heightdir = normalize(heightdir)
                 from FFOD import DFFOD
@@ -420,75 +348,25 @@ class FODStructure:
                 _AddFFOD(DFFOD(at1,-heightdir))
 
             elif free == 3:
-                if self.mAtom.mZ < 10:
-                    #Create the starting FOD. Begin with the vertical component
-                    R_f = sqrt(3/8)*np.linalg.norm(at1.mPos - at1.mFODStruct.mValence[0])
-                elif at1.mPeriod > 2:                                                            
-                    R_f = np.linalg.norm(at1.mPos - at1.mFODStruct.mValence[0])
-                # Begin First FOD 
-                axis2fod = RandomPerpDir(free_dir)
-                axis2fod *= np.sin(np.deg2rad(70.5288))*R_f 
-                #Create the horizontal component, parallel to the bonding axis
-                horizontal = np.cos(np.deg2rad(70.5288))*R_f*free_dir
-                #Add vectors, and rotate to create equilateral triangle
-                dr = horizontal + axis2fod
-                #Create rotations and rotated FODs
-                rot_fods = RotatePoints(3, dr, free_dir)
-
-                #Translate to the atom of interest, and add to Valence 
-                self.AddValFOD(at1.mPos + rot_fods,False,True)
-                # --------------------------------------------
-                # TODO: Remove stuff above
                 from FFOD import TFFOD
-                bonddir = tofrom(at2.mPos,at1.mPos)
-                dir0 = RandomPerpDir(bonddir)
-                norms = RotateNormals(3, dir0, normalize(bonddir)) 
+                dir0 = RandomPerpDir(free_dir)
+                norms = RotateNormals(3, dir0, normalize(free_dir)) 
                 _AddFFOD(TFFOD(at1, norms[0]))
                 _AddFFOD(TFFOD(at1, norms[1]))
                 _AddFFOD(TFFOD(at1, norms[2]))
-
-        def PlaceFODs_Triple(fugal: np.ndarray, a: float, rad: float, at2: Atom, c: float):
-            """ This function create an FOD at a certain distance, based of a and rad,
-            which are quantities assumed to dominate the interaction.
-            NOTE: Has been implemented in TBFOD Class. Deprecated
-            """
-            equilat_r =a/sqrt(3)
-            if at1.mZ == at2.mZ:
-                if at1.mPeriod ==2 & at2.mPeriod == 2:
-                    theta = np.arccos((c/2)/rad)
-                elif at1.mPeriod > 2 & at2.mPeriod > 2:
-                    theta = np.arctan(rad/(c/2)) 
-            else:
-                theta = np.arcsin((a/2)/rad) 
-            dr = fugal*rad*np.cos(theta) + RandomPerpDir(fugal)*rad*np.sin(theta)
-            return RotatePoints(3, dr, fugal)
 
         def TripleBond(at2: Atom):
             """
             #TODO: Create a helper funtion for conditional statements
             """
-            #Determine dominant atom and direction
-            atom, fugal = BoldMeekDir(at1,at2,False)
-            # Variables
-            c = np.linalg.norm(fugal) # Distance
-            fugal = normalize(fugal)
-            elecs = GlobalData.GetFullElecCount(atom.mGroup, atom.mPeriod)
-            rad = GlobalData.mRadii[elecs][atom.mZ] #Radius
-            a = GlobalData.mVert[elecs][atom.mZ] #Edge
-            #Place FODs
-            rot_fods = PlaceFODs_Triple(fugal, a, rad, at2, c)
-            self.AddValFOD(atom.mPos + rot_fods,at2,True)
             # Place BFODs, for new implementation
             bonddir = tofrom(at2.mPos,at1.mPos)
             boldmeek = BoldMeek(at1,at2)
             dir0 = RandomPerpDir(bonddir)
             norms = RotateNormals(3, dir0, normalize(bonddir)) 
-            fod1 = TBFOD(*boldmeek, norms[0])
-            fod2 = TBFOD(*boldmeek, norms[1])
-            fod3 = TBFOD(*boldmeek, norms[2])
-            _AddFOD(at1,at2,fod1)
-            _AddFOD(at1,at2,fod2)
-            _AddFOD(at1,at2,fod3)
+            _AddFOD(at1,at2,TBFOD(*boldmeek, norms[0]))
+            _AddFOD(at1,at2, TBFOD(*boldmeek, norms[1]))
+            _AddFOD(at1,at2, TBFOD(*boldmeek, norms[2]))
 
         def AddBFODs():
             """
@@ -511,7 +389,6 @@ class FODStructure:
                     AddFreeElectron(2)
             elif self.mAtom.mFreePairs == 1:
                 if self.mAtom.mSteric >= 2:
-                  #  AddFreeElectron(1)
                     _AddFFOD(SFFOD(self.mAtom))
             elif self.mAtom.mFreePairs == 3:
                 AddFreeElectron(3)

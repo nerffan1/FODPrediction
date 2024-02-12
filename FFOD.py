@@ -69,7 +69,7 @@ class DFFOD(FFOD):
         else: 
             theta = (np.deg2rad(220) - AngleBetween(*self.mAtom.GetVec2BFODs()))/2
         self.mAngle = theta
-
+    
         if self.mAtom.mPeriod < 3:
             # FreeDirection and Atom-BFOD Angle, plust lengths needed for determination
             vec2bfod = bfod.mPos - self.mAtom.mPos
