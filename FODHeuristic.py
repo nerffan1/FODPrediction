@@ -13,7 +13,7 @@ from FOD import FOD
 from BFOD import *
 
 class Molecule:
-    def __init__(self, xyzfile) -> None:
+    def __init__(self, xyzfile, RelaxedFODs = None) -> None:
         self.mAtoms: List[Atom] = []
         self.mFile = xyzfile
         self.mBonds = []
@@ -22,13 +22,17 @@ class Molecule:
             self.rdmol = Chem.MolFromPDBFile(xyzfile)
             self.__LoadPDB()
             exit
-        else:
+        elif xyzfile[-3:] == "xyz":
             self.rdmol = Chem.MolFromXYZFile(xyzfile)
             self.__LoadXYZ()
         GlobalData.mAtoms = self.mAtoms
         self.__RD_Bonds()
         self.CheckStericity()
         self.CalculateFODs()
+        if RelaxedFODs != None:
+            self.mRelaxPos = []
+            self.__LoadTargetFODs(RelaxedFODs)
+            self.ReverseDetermination()
 
     #String Output
     def __str__(self) -> str:
@@ -46,8 +50,6 @@ class Molecule:
         """
         for atom in self.mAtoms:
             atom.mFODStruct.PrepareShells(self.mAtoms)
-            #Will change this feature soon
-            #atom.mFODStruct.FinalizeFODs()
     
     def CreateXYZ(self):
         """
@@ -75,6 +77,20 @@ class Molecule:
                 return False
         return True
 
+    def ReverseDetermination(self):
+        """
+        This function associates the target FOD that is nearest to the predicted FOD (i.e. the output of this program). 
+        """
+        from scipy.spatial import distance
+        c = np.vstack([x for x in self.mRelaxPos])
+        for pfod in GlobalData.mFODs:
+            distances = distance.cdist([pfod.mPos],c, 'sqeuclidean')
+            print(distances)
+            index = np.argmin(distances[0])
+            print(index)
+            print(f'Predicted: {pfod.mPos}')
+            print(f'Target: {c[index]}')
+
     #Private Methods
     def __LoadXYZ(self):
         """
@@ -89,6 +105,19 @@ class Molecule:
             self.mAtoms.append(Atom(i, coor[0],atom_xyz)) #Name and Position
         XYZ.close()
         print(self.mComment) # Print the comment from the XYZ file 
+
+    def __LoadTargetFODs(self, fods):
+        """
+        Load a file of FOD position to reversedetermine their parameters.
+        """
+        Target = open(fods, "r")
+        count = int(Target.readline())  # Read Size
+        for i in range(count):
+            coor = Target.readline().split()
+            print([float(x) for x in coor[0:3]])
+            atom_xyz = np.array([float(x) for x in coor[0:3]])  # May have to convert to angstrom?
+            self.mRelaxPos.append(atom_xyz)  # Name and Position
+        Target.close()
 
     def __LoadPDB(self):
         """
@@ -196,3 +225,7 @@ class Molecule:
                 xyz = " ".join([str(x) for x in bfod.mPos])   
                 output.write(f"X {xyz}\n")
         pass
+
+    def _debug_CompareTargetFODs(self):
+        print(f'You have {len(GlobalData.mFODs)} Predicted FODs')
+        print(f'You have {len(self.mRelaxPos)} Target FODs')

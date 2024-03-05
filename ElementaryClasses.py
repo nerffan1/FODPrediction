@@ -235,7 +235,7 @@ class FODStructure:
            newFOD = SBFOD(*boldMeek)
            _AddFOD(at1,at2,newFOD)
 
-        def _AddFOD(at1: Atom, at2: Atom, fod: FOD):
+        def _AddFOD(at1: Atom, at2: Atom, *fods):
             """
             This function adds a new FOD to the individual atoms, to the list in GlobalData, and to the FODStructure
             TODO: Add the FOD to the Valence Structure?
@@ -246,16 +246,36 @@ class FODStructure:
             # The reason why we don't load FODs directly
             # is because we don't know whether at1 or at2
             # is the self.mAtom
-            at1.AddBFOD(fod)
-            at2.AddBFOD(fod)
-            GlobalData.mFODs.append(fod)          
+
+            # Create siblings
+            if len(fods) == 2:
+                fods[0].AddSibling(fods[1])
+                fods[1].AddSibling(fods[0])
+            elif len(fods) == 3:
+                fods[0].AddSibling(fods[1],fods[2])
+                fods[1].AddSibling(fods[0],fods[2])
+                fods[2].AddSibling(fods[0],fods[1])
+            # Add to atoms and globaldata
+            for fod in fods:
+                at1.AddBFOD(fod)
+                at2.AddBFOD(fod)
+                GlobalData.mFODs.append(fod)          
         
-        def _AddFFOD(ffod: FOD):
+        def _AddFFOD(*ffods):
             """
             TODO: Put this on a bigger scope
             """
-            self.mFFODs.append(ffod)
-            GlobalData.mFODs.append(ffod)          
+            # Create siblings. Manually seemed the fastest way to implement.
+            if len(ffods) == 2:
+               ffods[0].AddSibling(ffods[1])
+               ffods[1].AddSibling(ffods[0])
+            elif len(ffods) == 3:
+               ffods[0].AddSibling(ffods[1],ffods[2])
+               ffods[1].AddSibling(ffods[0],ffods[2])
+               ffods[2].AddSibling(ffods[0],ffods[1])
+            for ffod in ffods:
+                self.mFFODs.append(ffod)
+                GlobalData.mFODs.append(ffod)          
 
         def DoubleBond(at2: Atom, bond: Bond):
             """
@@ -327,8 +347,10 @@ class FODStructure:
                 #Find perpendicular unit vector
                 if self.mAtom.mFreePairs == 0:
                     axis2fod = D_FFOD_Direction()
-                    _AddFOD(dom,sub, DBFOD(dom,sub,axis2fod))
-                    _AddFOD(dom,sub, DBFOD(dom,sub,-axis2fod))
+                    # Create FODs and link
+                    f1 = DBFOD(dom,sub,axis2fod)
+                    f2 = DBFOD(dom,sub,-axis2fod)
+                    _AddFOD(dom,sub, f1, f2)
 
         def AddFreeElectron(free: int):
             """
@@ -351,9 +373,10 @@ class FODStructure:
                 from FFOD import TFFOD
                 dir0 = RandomPerpDir(free_dir)
                 norms = RotateNormals(3, dir0, normalize(free_dir)) 
-                _AddFFOD(TFFOD(at1, norms[0]))
-                _AddFFOD(TFFOD(at1, norms[1]))
-                _AddFFOD(TFFOD(at1, norms[2]))
+                f1 = TFFOD(at1, norms[0])
+                f2 = TFFOD(at1, norms[1])
+                f3 = TFFOD(at1, norms[2])
+                _AddFFOD(f1,f2,f3)
 
         def TripleBond(at2: Atom):
             """
@@ -364,9 +387,11 @@ class FODStructure:
             boldmeek = BoldMeek(at1,at2)
             dir0 = RandomPerpDir(bonddir)
             norms = RotateNormals(3, dir0, normalize(bonddir)) 
-            _AddFOD(at1,at2,TBFOD(*boldmeek, norms[0]))
-            _AddFOD(at1,at2, TBFOD(*boldmeek, norms[1]))
-            _AddFOD(at1,at2, TBFOD(*boldmeek, norms[2]))
+            # Create BFODs and link
+            f1 = TBFOD(*boldmeek, norms[0])
+            f2 = TBFOD(*boldmeek, norms[1])
+            f3 = TBFOD(*boldmeek, norms[2])
+            _AddFOD(at1,at2,f1,f2,f3)
 
         def AddBFODs():
             """

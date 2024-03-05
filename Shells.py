@@ -9,6 +9,7 @@ class FODShell:
         self.mAtom = atom
         self.mShape = shape 
         self.mfods = fods
+
     def __str__(self):
         return self.mShape
     

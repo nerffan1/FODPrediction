@@ -3,15 +3,20 @@
 #Version 0.1.6
 from  globaldata import GlobalData
 from FODHeuristic import *
-import numpy as np
 import sys
 
+dat = GlobalData()
 if len(sys.argv) == 1:
     print("No arguments were given, please provide XYZ file name")
     exit()
-dat = GlobalData()
-mol = Molecule(sys.argv[1])
-mol._debug_printBFODs()
-#mol.debug_printAtoms()
-mol._debug_printBFODsXYZ()
-#mol.CreateXYZ()
+elif len(sys.argv) == 2:
+    print("One argument passed. Creating FOD Prediction.")
+    mol = Molecule(sys.argv[1])
+elif len(sys.argv) == 3:
+    print("Two arguments passed. Reverse Determination of Relaxed FODs.")
+    mol = Molecule(sys.argv[1], sys.argv[2])
+    mol._debug_printBFODs()
+    #mol.debug_printAtoms()
+    mol._debug_printBFODsXYZ()
+    mol._debug_CompareTargetFODs()
+    #mol.CreateXYZ()

@@ -4,15 +4,31 @@ from ElementaryClasses import *
 from globaldata import *
 
 class BFOD(FOD):
-    def __init__(self, boldAt: Atom, meekAt: Atom):
+    """
+    The BFOD class is in charge of encapsulating the reparametrization of Bonding FODs. This class describes the FODs using the angles, distances, heights, and ratios
+    along the bonding axis in order to characterize the FODs. Some of these attributes of this class will tend toward zero in the SBFOD, but we know from some examples
+    that they are not always zero (e.g. they might lie slightly off the bonding axis, so there might be an angle).
+    """
+    def __init__(self, boldAt: Atom, meekAt: Atom, target=None):
         super().__init__()
+        # Atoms
         self.mBold = boldAt
         self.mMeek = meekAt
-        self.mMeekR = -1.0
-        self.mBoldR = -1.0
-        self.mBoldPortion = -1.0
+        # Angles
+        self.mBoldAngle = 0.0
+        self.mMeekAngle = 0.0
+        # Vectors
         self.mBondDir = meekAt.mPos - boldAt.mPos  # Always in direction away fromBold atom
+        self.mHeight = np.zeros(3)
+        # Distances
         self.mBondDist = np.linalg.norm(self.mBondDir)
+        self.mMeekR = 0.0
+        self.mBoldR = 0.0
+        # Misc 
+        self.mBoldPortion = 0.0
+        if target != None:
+            self.mPos = target
+            self.ReverseDetermination(target)
 
     def Calc_AxisBoldPortion(self, Zbold:int, Zmeek:int) -> float:
             """
@@ -52,6 +68,22 @@ class BFOD(FOD):
         else:
             return False
 
+    def ReverseDetermination(self, targetFOD: np.ndarray):
+        """"
+        This function uses the target FOD (e.g. an optimized FOD from FLOSIC) and returns the parameters
+        """
+        # Helper data
+        bold2fod = targetFOD -  self.mBold.mPos
+        meek2fod = targetFOD - self.mMeek.mPos
+        # Angles
+        self.mBoldAngle = AngleBetween(bold2fod, self.mBondDir)
+        self.mMeekAngle = AngleBetween(meek2fod, -self.mBondDir)
+        # Distances
+        self.mMeekR = norm(meek2fod)
+        self.mBoldR = norm(bold2fod)
+        # Misc 
+        self.mBoldPortion = np.cos(self.mBoldAngle)*self.mBoldR/self.mBondDist
+
 class SBFOD(BFOD):
     """
     This is the Single Bonding FOD (SBFOD) class
@@ -75,9 +107,7 @@ class DBFOD(BFOD):
         super().__init__(bold,meek)
         self.mHeight = heightdir
         self.mBoldAngle = np.deg2rad(54.735) 
-        self.mMeekAngle = 0.0
         self.DetermineParameters()
-
     def GetHeight(self) -> float:
         """
         Return radial distance from interatomic (bonding) axis. 
@@ -126,7 +156,6 @@ class TBFOD(BFOD):
         super().__init__(bold,meek)
         self.mHeight = heightdir 
         self.mBoldAngle = np.deg2rad(54.735) 
-        self.mMeekAngle = 0.0
         self.DetermineParameters()
 
     def DetermineParameters(self):
