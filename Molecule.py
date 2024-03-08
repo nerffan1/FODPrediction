@@ -95,15 +95,15 @@ class Molecule:
                     core_dist = norm(atom.mPos - shell.mfods[0].mPos)
                     print(core_dist)
                 elif shell.mShape == 'tetra':
-                    c = np.vstack([x.mAssocFOD.mPos for x in shell.mfods])
-                    Radii = distance.cdist([atom.mPos], c, 'euclidean')
-                    ave_radii = np.mean(Radii)
-                    var_radii = np.var(Radii)
+                    targets = np.vstack([x.mAssocFOD.mPos for x in shell.mfods])
+                    target_R = distance.cdist([atom.mPos], targets, 'euclidean')
+                    # Pred. Stats. of Target Shell
+                    shell.mTarget_u_R = np.mean(target_R)
+                    shell.mTarget_s2_R = np.var(target_R)
+                    # Pred. Stats. of Predicted Shell
                     pred_radii = [x.mR for x in shell.mfods]
-                    ave_pred_radii = np.mean(pred_radii)
-                    var_pred_radii = np.var(pred_radii)
-                    print(f'Target u Radii: {ave_radii}. s^2: {var_radii}')
-                    print(f'Predicted u Radii: {ave_pred_radii}. s^2: {var_pred_radii}')
+                    shell.mPred_u_R = np.mean(pred_radii)
+                    shell.mTarget_s2_R = np.var(pred_radii)
 
     #Private Methods
     def __AssociateTargets(self):
@@ -136,14 +136,10 @@ class Molecule:
             # Create the associate!
             pfod.mAssocFOD = assoc
 
-            if __debug__:
-                print('-'*50)
-                print(f"Index: {index}")
-                print(f'Predicted: {pfod.mPos}')
-                print(f'{type(pfod)}')
-                print(f'Target: {c[index]}')
-                print(f'Distance: {sqrt(distances[0][index])}')
-                print(f'Associate is {pfod.mAssocFOD}')
+            import logging
+            logger = logging.getLogger('Logger')
+            logger.setLevel(logging.DEBUG)
+            logger.debug('Logger test')
 
     def __LoadXYZ(self):
         """
@@ -226,7 +222,21 @@ class Molecule:
             count += len(atom.mFODStruct.mfods)
         return count
 
-    #Debugging Methods 
+    #Debugging Methods
+    def debug_printTargPred():
+        c = np.vstack([x for x in self.mRelaxPos])
+        for pfod in GlobalData.mFODs:
+            # Get the minimum distance to Target FOD
+            distances = distance.cdist([pfod.mPos],c, 'sqeuclidean')
+            index = np.argmin(distances[0])
+            if __debug__:
+                print('-'*50)
+                print(f"Index: {index}")
+                print(f'Predicted: {pfod.mPos}')
+                print(f'{type(pfod)}')
+                print(f'Target: {c[index]}')
+                print(f'Distance: {sqrt(distances[0][index])}')
+
     def debug_printAtoms(self):
         """Print atom names and positions"""
         for atom in self.mAtoms:  

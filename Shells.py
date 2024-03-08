@@ -36,6 +36,12 @@ class Tetra(FODShell):
             CFOD(atom, atom.mPos + s*array([-sqrt(2/9),sqrt(2/3), -1/3])),
             CFOD(atom, atom.mPos + s*array([-sqrt(2/9),-sqrt(2/3), -1/3]))
             ])
+        # Descriptive Stats. of Predicted FODs
+        self.mPred_u_R = 0.0
+        self.mPred_s2_R = 0.0
+        # Descriptive Stats. of Target FODs
+        self.mTarget_u_R = 0.0
+        self.mTarget_s2_R = 0.0
 
     #Class Methods
     def RotateTetra(self):
