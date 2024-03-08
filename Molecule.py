@@ -1,11 +1,12 @@
-#RDKit for BondPrediction
+# RDKit for BondPrediction
 from rdkit import Chem
 from rdkit.Chem import Mol
 from rdkit.Chem import rdDetermineBonds
 from rdkit.Chem import rdmolops
 from rdkit.Chem import AllChem
-
-#Custom Made library
+# Numpy
+from scipy.spatial import distance
+# Custom Made library
 from globaldata import GlobalData
 from ElementaryClasses import *
 from Bond import *
@@ -79,19 +80,71 @@ class Molecule:
 
     def ReverseDetermination(self):
         """
-        This function associates the target FOD that is nearest to the predicted FOD (i.e. the output of this program). 
+        This function executes the reversedetermination of paramters for all Target FODs that have
+        been associated with the predicted FODs.
         """
-        from scipy.spatial import distance
-        c = np.vstack([x for x in self.mRelaxPos])
-        for pfod in GlobalData.mFODs:
-            distances = distance.cdist([pfod.mPos],c, 'sqeuclidean')
-            print(distances)
-            index = np.argmin(distances[0])
-            print(index)
-            print(f'Predicted: {pfod.mPos}')
-            print(f'Target: {c[index]}')
+        self.__AssociateTargets()
+        # Bonding?
+        # Free?
+        # Core?
+        from Shells import FODShell
+        for atom in self.mAtoms:
+            for shell in atom.mFODStruct.mCoreShells:
+                # For a tetra, get average radii
+                if shell.mShape == 'point':
+                    core_dist = norm(atom.mPos - shell.mfods[0].mPos)
+                    print(core_dist)
+                elif shell.mShape == 'tetra':
+                    c = np.vstack([x.mAssocFOD.mPos for x in shell.mfods])
+                    Radii = distance.cdist([atom.mPos], c, 'euclidean')
+                    ave_radii = np.mean(Radii)
+                    var_radii = np.var(Radii)
+                    pred_radii = [x.mR for x in shell.mfods]
+                    ave_pred_radii = np.mean(pred_radii)
+                    var_pred_radii = np.var(pred_radii)
+                    print(f'Target u Radii: {ave_radii}. s^2: {var_radii}')
+                    print(f'Predicted u Radii: {ave_pred_radii}. s^2: {var_pred_radii}')
 
     #Private Methods
+    def __AssociateTargets(self):
+        """
+        This function associates the target FOD that is nearest to the predicted FOD (i.e. the output of this program).
+        """
+        from FFOD import FFOD
+
+        # Create a vertical vector
+        c = np.vstack([x for x in self.mRelaxPos])
+        for pfod in GlobalData.mFODs:
+            # Get the minimum distance to Target FOD
+            distances = distance.cdist([pfod.mPos],c, 'sqeuclidean')
+            index = np.argmin(distances[0])
+            # Print general information
+            # Create appropriate associate fod
+            if isinstance(pfod, BFOD):
+                assoc = BFOD(
+                    pfod.mBold,
+                    pfod.mMeek,
+                    c[index])
+            elif isinstance(pfod, FFOD):
+                assoc = FFOD(
+                    pfod.mAtom,
+                    target=c[index])
+            elif isinstance(pfod, CFOD):
+                assoc = CFOD(pfod.mAtom, c[index])
+            else:
+                print("Invalid classification for FOD")
+            # Create the associate!
+            pfod.mAssocFOD = assoc
+
+            if __debug__:
+                print('-'*50)
+                print(f"Index: {index}")
+                print(f'Predicted: {pfod.mPos}')
+                print(f'{type(pfod)}')
+                print(f'Target: {c[index]}')
+                print(f'Distance: {sqrt(distances[0][index])}')
+                print(f'Associate is {pfod.mAssocFOD}')
+
     def __LoadXYZ(self):
         """
         Load the XYZ file
@@ -111,10 +164,13 @@ class Molecule:
         Load a file of FOD position to reversedetermine their parameters.
         """
         Target = open(fods, "r")
-        count = int(Target.readline())  # Read Size
-        for i in range(count):
+        # Read size of UP/DOWN FODs
+        fods = Target.readline().split()
+        upcount = int(fods[0])
+        downcount = int(fods[1])
+        # Load positions as ndarrays
+        for i in range(upcount):
             coor = Target.readline().split()
-            print([float(x) for x in coor[0:3]])
             atom_xyz = np.array([float(x) for x in coor[0:3]])  # May have to convert to angstrom?
             self.mRelaxPos.append(atom_xyz)  # Name and Position
         Target.close()
@@ -213,7 +269,7 @@ class Molecule:
                 print(bfod)
 
     def _debug_printBFODsXYZ(self):
-        with open("debug_bfod.xyz",'w') as output:
+        with open("out.xyz",'w') as output:
             #First 2 lines
             output.write(str(len(self.mAtoms) + len(GlobalData.mFODs)) + '\n')
             output.write(self.mComment)
@@ -227,5 +283,10 @@ class Molecule:
         pass
 
     def _debug_CompareTargetFODs(self):
+        """
+        This function enumerates the number of predicted FODs (generated by FODLego)
+        and the number of FODs from your target file.
+        """
+        print("-"*30)
         print(f'You have {len(GlobalData.mFODs)} Predicted FODs')
         print(f'You have {len(self.mRelaxPos)} Target FODs')

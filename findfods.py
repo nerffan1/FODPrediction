@@ -2,7 +2,7 @@
 #Atom Class
 #Version 0.1.6
 from  globaldata import GlobalData
-from FODHeuristic import *
+from Molecule import *
 import sys
 
 dat = GlobalData()
@@ -15,8 +15,4 @@ elif len(sys.argv) == 2:
 elif len(sys.argv) == 3:
     print("Two arguments passed. Reverse Determination of Relaxed FODs.")
     mol = Molecule(sys.argv[1], sys.argv[2])
-    mol._debug_printBFODs()
-    #mol.debug_printAtoms()
     mol._debug_printBFODsXYZ()
-    mol._debug_CompareTargetFODs()
-    #mol.CreateXYZ()

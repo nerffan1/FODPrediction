@@ -1,5 +1,6 @@
 import numpy as np
 from typing import List
+from numpy.linalg import norm
 
 class FOD:
     def __init__(self, pos: np.ndarray = np.zeros(3)) -> None:
@@ -25,12 +26,21 @@ class FOD:
         """
         Overloading addition operation to add shift the mPos value. Mutates instance.
         """
-        self.mPos += shift
-        return self
+        return (self.mPos + shift)
 
     def __sub__(self, shift: float):
         """
         Overloading addition operation to add a negative shift the mPos value. Mutates instance.
         """
-        self.mPos -= shift
-        return self
+        return (self.mPos - shift)
+
+class CFOD(FOD):
+    """
+    This class is essentially the same as <FOD>. For categorization purposes, it was better to
+    create this class instead of creating a Boolean member inside the FOD class that made it a
+    CFOD.
+    """
+    def __init__(self, atom, pos: np.ndarray = np.zeros(3)) -> None:
+        super().__init__(pos)
+        self.mAtom = atom
+        self.mR = np.linalg.norm(self.mPos - atom.mPos)

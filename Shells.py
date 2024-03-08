@@ -2,7 +2,7 @@ from globaldata import GlobalData
 import numpy as np
 from numpy import sqrt, array
 from numpy.linalg import norm
-from FOD import FOD
+from FOD import CFOD
 
 class FODShell:
     def __init__(self, atom, shape, fods):
@@ -18,7 +18,7 @@ class FODShell:
 
 class Point(FODShell):
     def __init__(self, atom):
-        super().__init__(atom,'point', [FOD(atom.mPos)])
+        super().__init__(atom,'point', [CFOD(atom, atom.mPos)])
 
 class Tetra(FODShell):
     """
@@ -27,18 +27,23 @@ class Tetra(FODShell):
     of the tetrahedron), and to rotate them in the proper direction as well.
     """
     def __init__(self, atom, core_amount: int) -> None:
+        # Scale the FODs according to radius
+        s = GlobalData.mRadii[core_amount][atom.mZ]
         # The geometry of a tetrahedron in a unit circle
         super().__init__(atom, 'tetra', [
-            FOD(array([0.0,0.0,1.0])),
-            FOD(array([sqrt(8/9), 0.0, -1/3])),
-            FOD(array([-sqrt(2/9),sqrt(2/3), -1/3])),
-            FOD(array([-sqrt(2/9),-sqrt(2/3), -1/3]))
+            CFOD(atom, atom.mPos + s*array([0.0,0.0,1.0])),
+            CFOD(atom, atom.mPos + s*array([sqrt(8/9), 0.0, -1/3])),
+            CFOD(atom, atom.mPos + s*array([-sqrt(2/9),sqrt(2/3), -1/3])),
+            CFOD(atom, atom.mPos + s*array([-sqrt(2/9),-sqrt(2/3), -1/3]))
             ])
-        # Scale the FODs according to radius
-        scale = GlobalData.mRadii[core_amount][atom.mZ]
-        [fods*scale for fods in self.mfods]
-        [fods+atom.mPos for fods in self.mfods]
 
     #Class Methods
     def RotateTetra(self):
         pass
+
+class Triaug(FODShell):
+    """
+    This shape is created for SPD hybridization. It is not part of the scope of Angel's 2024 MS Thesis,
+    However, its preliminary implementation would be here.
+    """
+    pass

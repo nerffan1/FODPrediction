@@ -204,7 +204,7 @@ class FODStructure:
         # Add individual FODs to the electronic structure
         for fod in shell.mfods:
             GlobalData.mFODs.append(fod)
-            self.mCore.append(fod) # TODO: Do we need this ?
+            self.mCore.append(fod)
 
     def PrepareShells(self, atoms: List[Atom]):
         """
@@ -427,26 +427,15 @@ class FODStructure:
                         self._AddCoreShell(Shells.Point(self.mAtom))
                     elif shell == 'tetra':
                         self._AddCoreShell(Shells.Tetra(self.mAtom, 10))
-        
+                    elif shell == 'triaug':
+                        pass # For future development: Beyond scope
+
         #Prepare the valence shell first, since it will help determine the
         # orientation of the inner shells
         AddBFODs()
         AddCoreElectrons()
         AddFFODs()
             
-    def FinalizeFODs(self):
-        """
-        Add all FODs in the FODStructure, to the atom, so that they can be
-        printed when creating the XYZ output file
-        """
-        #Add the core FODs
-        for shell in self.mCore:
-            shell.mfods += self.mAtom.mPos   
-            if len(self.mfods) == 0:
-                self.mfods = [shell.mfods]
-            else:
-                self.mfods = np.vstack((self.mfods,shell.mfods))  ###HOW TO concatenate FODs, easily
-    
 ################# ADDITIONAL FUNCTIONS #################
 def BoldMeekDir(at1: Atom, at2: Atom, all=True):
     """

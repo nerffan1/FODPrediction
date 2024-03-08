@@ -26,9 +26,9 @@ class BFOD(FOD):
         self.mBoldR = 0.0
         # Misc 
         self.mBoldPortion = 0.0
-        if target != None:
+        if isinstance(target, np.ndarray):
             self.mPos = target
-            self.ReverseDetermination(target)
+            # self.ReverseDetermination(target)
 
     def Calc_AxisBoldPortion(self, Zbold:int, Zmeek:int) -> float:
             """

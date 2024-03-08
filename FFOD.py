@@ -12,9 +12,8 @@ class FFOD(FOD):
         self.mHeight = HeightDir
         self.mFreeDir = atom.AverageBFODDir()
         # Reverse Determination parameters
-        if target != None:
+        if isinstance(target, np.ndarray):
             self.mPos = target
-            self.ReverseDetermination(target)
 
 class SFFOD(FFOD):
     def __init__(self, atom: Atom):
