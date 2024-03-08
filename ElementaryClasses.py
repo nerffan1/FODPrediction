@@ -259,7 +259,8 @@ class FODStructure:
             for fod in fods:
                 at1.AddBFOD(fod)
                 at2.AddBFOD(fod)
-                GlobalData.mFODs.append(fod)          
+                GlobalData.mFODs.append(fod)
+                GlobalData.mBFODs.append(fod)
         
         def _AddFFOD(*ffods):
             """
@@ -489,22 +490,37 @@ def BoldMeek(at1: Atom, at2: Atom):
     return dom, sub 
 
 def AxialPoint_Simple(dom:Atom, sub:Atom, dir:np.ndarray) -> np.ndarray:
-            """
-            Return FOD location for a Single FOD representing a Single Bond.
-            If the bonding atoms are the same type, then the midpoint is chosen.
-            Atom1 is assumed to be bigger than Atom2.  
-            TODO: Should just return a length since we can calculate dominant one
-            """
-            Z1 = dom.mZ
-            Z2 = sub.mZ
-            if dom.mZ == sub.mZ:
-                return dir*0.5
-            else:
-                Z1 = 0.4 if Z1 == 1 else Z1
-                Z2 = 0.4 if Z2 == 1 else Z2
-                r = sqrt(Z1/Z2)
-                g = r/(1+r)
-            if g < 0.5:
-                return dir*g
-            else:
-                return dir*(1-g)
+    """
+    Return FOD location for a Single FOD representing a Single Bond.
+    If the bonding atoms are the same type, then the midpoint is chosen.
+    Atom1 is assumed to be bigger than Atom2.
+    TODO: Should just return a length since we can calculate dominant one
+    """
+    Z1 = dom.mZ
+    Z2 = sub.mZ
+    if dom.mZ == sub.mZ:
+        return dir*0.5
+    else:
+        Z1 = 0.4 if Z1 == 1 else Z1
+        Z2 = 0.4 if Z2 == 1 else Z2
+        r = sqrt(Z1/Z2)
+        g = r/(1+r)
+    if g < 0.5:
+        return dir*g
+    else:
+        return dir*(1-g)
+
+def InverseSqRatio(dom, sub):
+    Z1 = dom.mZ
+    Z2 = sub.mZ
+    if dom.mZ == sub.mZ:
+        return 0.5
+    else:
+        Z1 = 0.4 if Z1 == 1 else Z1
+        Z2 = 0.4 if Z2 == 1 else Z2
+        r = sqrt(Z1/Z2)
+        g = r/(1+r)
+        if g < 0.5:
+            return g
+        else:
+            return (1-g)

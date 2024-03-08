@@ -18,8 +18,8 @@ class Molecule:
         self.mAtoms: List[Atom] = []
         self.mFile = xyzfile
         self.mBonds = []
-        # Load pdb or xyz
-        if xyzfile[-3:] == "pdb":
+        # Load File
+        if xyzfile[-3:] == "pdb":  # WiP. This is a test
             self.rdmol = Chem.MolFromPDBFile(xyzfile)
             self.__LoadPDB()
             exit
@@ -30,6 +30,8 @@ class Molecule:
         self.__RD_Bonds()
         self.CheckStericity()
         self.CalculateFODs()
+
+        # Reverse Determine Parameters with a target file
         if RelaxedFODs != None:
             self.mRelaxPos = []
             self.__LoadTargetFODs(RelaxedFODs)
@@ -85,6 +87,14 @@ class Molecule:
         """
         self.__AssociateTargets()
         # Bonding?
+        for bfod in GlobalData.mBFODs:
+            bfod.mAssocFOD.RevDet()
+            print(50*'-')
+            print(type(bfod))
+            bfod.PrintParams()
+            print(30*'*')
+            bfod.mAssocFOD.PrintParams()
+
         # Free?
         # Core?
         from Shells import FODShell
