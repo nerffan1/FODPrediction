@@ -71,7 +71,7 @@ class Atom:
         self.mFODStruct.mBFODs.append(fod)
     
     def GetVec2BFODs(self):
-        return [self.mPos - x.mPos for x in self.mFODStruct.mBFODs]
+        return [ x.mPos - self.mPos for x in self.mFODStruct.mBFODs]
 
     def GetVectoNeighbors(self):
         """
@@ -306,8 +306,8 @@ class FODStructure:
                 angle = AngleBetween(BA,D)
                 
                 #(3) Check for orthogonality
-                thres_max = 1.01*(np.pi/2) # +1% Deviation from 99%
-                thres_min = .99*(np.pi/2) # -1% Deviation from 99%
+                thres_max = 1.01*(np.pi/2) # +1% Deviation from 100%
+                thres_min = .99*(np.pi/2) # -1% Deviation from 100%
                 if angle > thres_max or angle < thres_min:
                     #Get axis of rotation
                     axis = np.cross(BA,D)
@@ -322,21 +322,26 @@ class FODStructure:
  
                 return D
 
-            def D_FFOD_Direction():
+            def D_BFOD_Direction():
+                """
+                - Atoms with 3 bonds: Then the DBFODs are based of the other
+                  two FODs. It accounts for bent molecules. Prime example: C60
+                - Atoms with 2 bonds: The 
+                """
                 if self.mAtom.mFreePairs == 0:
                     #Determine DFFOD Direction
                     if len(self.mAtom.mBonds) == 3:
                         return  HeightDir_fromNeighborBFODs()
                     elif len(self.mAtom.mBonds) == 2:
                         if self.mAtom.mBonds.index(bond) == 0:
-                            return  RandomPerpDir(dir)
+                            return RandomPerpDir(dir)
                         else:
                             # Cross product between atom and already-placed FODs
                             vector_for_cross = []
-                            for fods in self.mValence:
-                                vector_for_cross.append(fods)
+                            for fods in self.mBFODs:
+                                vector_for_cross.append(fods.mPos)
                             vector_for_cross -= self.mAtom.mPos
-                            return np.cross(*vector_for_cross)   
+                            return np.cross(*vector_for_cross)
                 else:
                     return RandomPerpDir(dir)
 
@@ -346,8 +351,8 @@ class FODStructure:
 
             if GlobalData.GetFullElecCount(self.mAtom.mGroup,self.mAtom.mPeriod) <= 18:
                 #Find perpendicular unit vector
-                if self.mAtom.mFreePairs == 0:
-                    axis2fod = D_FFOD_Direction()
+                    dir = sub.mPos - dom.mPos
+                    axis2fod = D_BFOD_Direction()
                     # Create FODs and link
                     f1 = DBFOD(dom,sub,axis2fod)
                     f2 = DBFOD(dom,sub,-axis2fod)
@@ -364,7 +369,10 @@ class FODStructure:
                 free_dir = self.mAtom.mPos - at2.mPos
 
             if free == 2:
-                heightdir =  np.cross(*[fod.mPos for fod in self.mBFODs],axis=0)
+                heightdir = np.cross(*[fod.mPos for fod in self.mBFODs],axis=0)
+                # Add a check in case the cross product gives 0
+                if (heightdir == np.array([0.0,0.0,0.0])).all():
+                    heightdir = RandomPerpDir(self.mBFODs[0].mPos)
                 heightdir = normalize(heightdir)
                 from FFOD import DFFOD
                 _AddFFOD(DFFOD(at1,heightdir))

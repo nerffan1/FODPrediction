@@ -82,9 +82,12 @@ class BFOD(FOD):
         self.mMeekR = norm(meek2fod)
         self.mBoldR = norm(bold2fod)
         # Misc 
-        self.mBoldPortion = np.cos(self.mBoldAngle)*self.mBoldR/self.mBondDist
+        self.mBoldPortion = (np.cos(self.mBoldAngle)*self.mBoldR)/self.mBondDist
+        if (self.mBoldPortion > 1): 
+           print('hello')
 
     def PrintParams(self):
+        print(f"{self.mBold.mName}-{self.mMeek.mName}")
         print(f"BoldR: {self.mBoldR}")
         print(f"MeekR: {self.mMeekR}")
         print(f"Bold Theta: {np.rad2deg(self.mBoldAngle)}")
@@ -137,6 +140,7 @@ class DBFOD(BFOD):
             if self.mBold.mPeriod == self.mMeek.mPeriod:
                 return InverseSqRatio(self.mBold, self.mMeek)
             else:
+                self.mBoldAngle = np.deg2rad(54)
                 proj = np.cos(self.mBoldAngle)*self.mBold.GetMonoCovalRad()
                 return proj/self.mBondDist
 
@@ -154,16 +158,14 @@ class DBFOD(BFOD):
         # Finalize parameters
         self.mPos = self.mBold.mPos + delta_bond + delta_height
 
-        # Measure Meek Angle
+        # Measure Meek Angle-Distance
         toFOD = self.mMeek.mPos - self.mPos
         self.mMeekAngle = AngleBetween(self.mBondDir, toFOD)
-
-        # Measure Bold Angle
-        toFOD = self.mPos = self.mBold.mPos
-        self.mBoldAngle = AngleBetween(self.mBondDir, toFOD)
-
-        # Set Distances
         self.mMeekR = np.linalg.norm(toFOD)
+
+        # Measure Bold Angle-Distance
+        toFOD = self.mPos - self.mBold.mPos
+        self.mBoldAngle = AngleBetween(self.mBondDir, toFOD)
         self.mBoldR = np.linalg.norm(self.mBold.mPos - self.mPos)
 
     def Duplicate(self):
@@ -191,19 +193,25 @@ class TBFOD(BFOD):
         # This section modifies the height depending on the nature of the monoatomic bond
         # 2nd period elements tend to tighten BFODs.
         if self.IsMonoatomic():
-            if self.mBold.mPeriod == 2 & self.mMeek.mPeriod == 2:
+            if self.mBold.mPeriod == 2 and self.mMeek.mPeriod == 2:
                 theta = np.arccos((c/2)/rad)
-            elif self.mBold.mPeriod > 2 & self.mMeek.mPeriod > 2:
+            elif self.mBold.mPeriod > 2 and self.mMeek.mPeriod > 2:
                 theta = np.arctan(rad/(c/2)) 
         else:
             #theta = np.arcsin((a/2)/rad) 
             theta = np.deg2rad(54.735)
+        self.mBoldAngle = theta
         dr = normalize(self.mBondDir)*rad*np.cos(theta) 
-        dr += self.mHeight*rad*np.sin(theta)
-        self.mPos = self.mBold.mPos + dr
-        
+        dl = self.mHeight*rad*np.sin(theta)
+        self.mPos = self.mBold.mPos + dr + dl
+
         # Determine the Meek Atom angle
         self.DetermineMeek()
+
+        # Determine Distances
+        self.mBoldR = dist(self.mPos, self.mBold.mPos)
+        self.mMeekR = dist(self.mPos, self.mMeek.mPos)
+        self.mBoldPortion = (np.cos(self.mBoldAngle)*self.mBoldR)/c
 
     def DetermineMeek(self):
         """

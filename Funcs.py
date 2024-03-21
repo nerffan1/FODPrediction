@@ -72,3 +72,4 @@ def AngleBetween(A: np.ndarray, B: np.ndarray) -> float:
 ####LAMBDA FUNCTIONS######
 normalize = lambda v: v/np.linalg.norm(v)
 tofrom = lambda v, w: v - w
+dist = lambda a,b: np.linalg.norm(a-b)

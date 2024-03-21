@@ -17,7 +17,11 @@ class Molecule:
     def __init__(self, xyzfile, RelaxedFODs = None) -> None:
         self.mAtoms: List[Atom] = []
         self.mFile = xyzfile
+        self.mQ = 0
         self.mBonds = []
+        self.mBFODs = []
+        self.mFFODs = []
+
         # Load File
         if xyzfile[-3:] == "pdb":  # WiP. This is a test
             self.rdmol = Chem.MolFromPDBFile(xyzfile)
@@ -85,15 +89,12 @@ class Molecule:
         This function executes the reversedetermination of paramters for all Target FODs that have
         been associated with the predicted FODs.
         """
+        import FOD_Print
         self.__AssociateTargets()
         # Bonding?
         for bfod in GlobalData.mBFODs:
             bfod.mAssocFOD.RevDet()
-            print(50*'-')
-            print(type(bfod))
-            bfod.PrintParams()
-            print(30*'*')
-            bfod.mAssocFOD.PrintParams()
+            FOD_Print.PrintSidebySide(bfod,bfod.mAssocFOD)
 
         # Free?
         # Core?
@@ -146,18 +147,16 @@ class Molecule:
             # Create the associate!
             pfod.mAssocFOD = assoc
 
-            import logging
-            logger = logging.getLogger('Logger')
-            logger.setLevel(logging.DEBUG)
-            logger.debug('Logger test')
-
     def __LoadXYZ(self):
         """
         Load the XYZ file
         """
         XYZ = open(self.mFile, "r")
         count = int(XYZ.readline()) #Read Size
-        self.mComment = XYZ.readline() #Comment
+        # Extract comment and charge
+        self.mComment = XYZ.readline()
+        print(self.mComment)
+        self.mQ = int(self.mComment.split()[-1])
         for i in range(count):
             coor = XYZ.readline().split()
             atom_xyz = [float(x) for x in coor[1:4]]
@@ -198,20 +197,19 @@ class Molecule:
         """ 
         #RDKit Functionality to determine the bonding.
         rdDetermineBonds.DetermineConnectivity(self.rdmol)
-        rdDetermineBonds.DetermineBondOrders(self.rdmol, charge=0)
+        rdDetermineBonds.DetermineBondOrders(self.rdmol, charge=self.mQ)
         rdmolops.Kekulize(self.rdmol)
         #Loop through the
         for rdbond in self.rdmol.GetBonds():
-            
-            atom1 = rdbond.GetBeginAtomIdx()   
-            atom2 = rdbond.GetEndAtomIdx() 
+            at1 = rdbond.GetBeginAtomIdx()   
+            at2 = rdbond.GetEndAtomIdx() 
             order = rdbond.GetBondTypeAsDouble()
-            self.mBonds.append(Bond(atom1, atom2,order))
-            self.mAtoms[atom1].AddBond(atom2, order)
-            self.mAtoms[atom2].AddBond(atom1, order)
+            self.mBonds.append(Bond(at1, at2,order))
+            self.mAtoms[at1].AddBond(at2, order)
+            self.mAtoms[at2].AddBond(at1, order)
             # Add the Bonding FODs
-            self.mAtoms[atom1].mFODStruct.mBFODs.append
-            boldMeek = BoldMeek(self.mAtoms[atom1],self.mAtoms[atom2])
+            self.mAtoms[at1].mFODStruct.mBFODs.append
+            boldMeek = BoldMeek(self.mAtoms[at1],self.mAtoms[at2])
  
     def CheckStericity(self):
         """
