@@ -23,6 +23,7 @@ elif sys.argv[1] == "list":
 elif len(sys.argv) == 2:
     print("One argument passed. Creating FOD Prediction.")
     mol = Molecule(sys.argv[1])
+    mol.CreateCLUSTER()
     mol._debug_printBFODsXYZ()
 
 # Determine parameters and compare with a target file of FRMORBs

@@ -19,8 +19,9 @@ class Molecule:
         self.mFile = xyzfile
         self.mQ = 0
         self.mBonds = []
-        self.mBFODs = []
-        self.mFFODs = []
+        self.mBFODs = set()
+        self.mFFODs = set()
+        self.mCFODs = set()
 
         # Load File
         if xyzfile[-3:] == "pdb":  # WiP. This is a test
@@ -57,7 +58,14 @@ class Molecule:
         """
         for atom in self.mAtoms:
             atom.mFODStruct.PrepareShells(self.mAtoms)
-    
+            # Add the calculated FODs to the molecule
+            for bfod in atom.mFODStruct.mBFODs:
+                self.mBFODs.add(bfod)
+            for ffod in atom.mFODStruct.mFFODs:
+                self.mFFODs.add(ffod)
+            for cfod in atom.mFODStruct.mCore:
+                self.mCFODs.add(cfod)
+
     def CreateXYZ(self):
         """
         Create an XYZ file with
@@ -74,6 +82,22 @@ class Molecule:
                 for fod in atom.mFODStruct.mfods:
                     xyz = " ".join([str(x) for x in fod])   
                     output.write(f"X {xyz}\n")
+    
+    def CreateCLUSTER(self):
+        """
+        Creates a CLUSTER file that will serve as an input file for FLOSIC to begin
+        
+        """
+        cluster = open("CLUSTER", "w")
+        # CLUSTER Preamble
+        cluster.write("LDA-PWA91*LDA-PW91\n")
+        cluster.write("NONE\n")
+        # Loop thorugh each atom for coordinates
+        for atom in self.mAtoms:
+            coordinate = " ".join(str(x*1.88973) for x in atom.mPos) + " " + str(atom.mZ) + " ALL" + '\n'
+            cluster.write(coordinate)
+        cluster.write(f"{self.mQ} {0.0}")  # TODO: Make a variable that contains sum of all spins
+        cluster.close()
 
     def ClosedMol(self):
         """
@@ -92,8 +116,7 @@ class Molecule:
         import FOD_Print
         self.__AssociateTargets()
         # Bonding?
-        for bfod in GlobalData.mBFODs:
-            bfod.mAssocFOD.RevDet()
+        for bfod in self.mBFODs:
             FOD_Print.PrintSidebySide(bfod,bfod.mAssocFOD)
 
         # Free?
@@ -125,27 +148,27 @@ class Molecule:
 
         # Create a vertical vector
         c = np.vstack([x for x in self.mRelaxPos])
-        for pfod in GlobalData.mFODs:
+        fods = set.union(self.mBFODs, self.mCFODs)
+        for pfod in fods:
             # Get the minimum distance to Target FOD
             distances = distance.cdist([pfod.mPos],c, 'sqeuclidean')
             index = np.argmin(distances[0])
+
             # Print general information
             # Create appropriate associate fod
             if isinstance(pfod, BFOD):
-                assoc = BFOD(
+                pfod.mAssocFOD = BFOD(
                     pfod.mBold,
                     pfod.mMeek,
                     c[index])
             elif isinstance(pfod, FFOD):
-                assoc = FFOD(
+                pfod.mAssocFOD = FFOD(
                     pfod.mAtom,
                     target=c[index])
             elif isinstance(pfod, CFOD):
-                assoc = CFOD(pfod.mAtom, c[index])
+                pfod.mAssocFOD = CFOD(pfod.mAtom, c[index])
             else:
                 print("Invalid classification for FOD")
-            # Create the associate!
-            pfod.mAssocFOD = assoc
 
     def __LoadXYZ(self):
         """

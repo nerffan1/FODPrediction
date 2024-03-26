@@ -29,8 +29,6 @@ def GridPropRatios(mols):
     import numpy as np
     import matplotlib.pyplot as plt
     from globaldata import GlobalData
-    from BFOD import BFOD
-    import mplcursors
 
     # Dictionary to store bond classes and their associated bond proportions
     bond_pairs = {}
@@ -44,12 +42,14 @@ def GridPropRatios(mols):
             bond_pairs[key] = []
         bond_pairs[key].append(bfod.mAssocFOD.mBoldPortion)
 
-    # Initialize a dictionary to store the average bond proportions for each bond pair
+    # Initialize a dictionary to store the average bond proportions and standard deviation for each bond pair
     average_bond_proportions = {}
+    std_deviation_bond_proportions = {}
 
-    # Calculate the average bond proportion for each bond pair
+    # Calculate the average bond proportion and standard deviation for each bond pair
     for bond_pair, bond_proportions in bond_pairs.items():
         average_bond_proportions[bond_pair] = np.mean(bond_proportions)
+        std_deviation_bond_proportions[bond_pair] = np.std(bond_proportions)
 
     # Extract unique atomic numbers from bond pairs
     unique_atomic_numbers = set()
@@ -76,7 +76,8 @@ def GridPropRatios(mols):
             index_2 = atomic_numbers_sorted.index(atomic_number_2)
             bond_matrix[index_1, index_2] = avg_bond_proportion
             bond_matrix[index_2, index_1] = avg_bond_proportion
-# Plot the heatmap with modified colormap and scaled data
+
+    # Plot the heatmap with modified colormap and scaled data
     fig, ax = plt.subplots()
     heatmap = ax.imshow(bond_matrix, cmap='summer', interpolation='nearest', vmin=bond_matrix.min(), vmax=bond_matrix.max())
     plt.colorbar(heatmap, ax=ax, label='Average Bond Proportion')
@@ -86,42 +87,17 @@ def GridPropRatios(mols):
     plt.ylabel('Atomic Number')
     plt.title('Average Bond Proportion Matrix Heatmap')
 
-    # Annotate the averages in the grid boxes
+    # Annotate the averages and standard deviations in the grid boxes
     for i in range(matrix_size):
         for j in range(matrix_size):
-            ax.annotate(f'{bond_matrix[i, j]:.2f}', (j, i), color='black', ha='center', va='center')
+            avg_value = bond_matrix[i, j]
+            std_dev_value = std_deviation_bond_proportions.get(frozenset({atomic_numbers_sorted[i], atomic_numbers_sorted[j]}), 0)
+            num_data_points = len(bond_pairs.get(frozenset({atomic_numbers_sorted[i], atomic_numbers_sorted[j]}), []))
+            annotation = f'μ = {avg_value:.4f}\nσ = {std_dev_value:.4f}\nN = {num_data_points}'
+            ax.annotate(annotation, (j, i), color='black', ha='center', va='center')
 
-    # Define a function to display data points associated with a specific cell
-    def show_data_points(event):
-        if event.xdata is not None and event.ydata is not None:
-            i = int(round(event.ydata))
-            j = int(round(event.xdata))
-            bond_pair = frozenset({atomic_numbers_sorted[i], atomic_numbers_sorted[j]})
-            data_points = bond_pairs.get(bond_pair, [])
-            num_data_points = len(data_points)
-            if num_data_points > 0:
-                data_str = "\n".join([str(point) for point in data_points])
-                ax_side.clear()
-                ax_side.text(0, 0.5, f'Avg: {bond_matrix[i, j]:.2f}\nVar: {np.var(bond_matrix[i, j]):.2f}\nItems: {num_data_points}\nData Points:\n{data_str}', fontsize=10, verticalalignment='center')
-                ax_side.set_xlim(0, 1)
-                ax_side.set_ylim(0, 1)
-                ax_side.axis('off')
-                plt.draw()
-            else:
-                ax_side.clear()
-                ax_side.set_xlim(0, 1)
-                ax_side.set_ylim(0, 1)
-                ax_side.axis('off')
-                plt.draw()
-
-    # Create a side subplot to display the data points
-    ax_side = fig.add_axes([0.85, 0.1, 0.15, 0.8])
-    ax_side.set_xlim(0, 1)
-    ax_side.set_ylim(0, 1)
-    ax_side.axis('off')
-
-    # Connect the function to the figure for mouse click events
-    fig.canvas.mpl_connect('button_press_event', show_data_points)
-
+    
     # Save the image
+    plt.savefig('heatmap.pdf')
+    print(bond_pairs)
     plt.show()

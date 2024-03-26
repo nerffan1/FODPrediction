@@ -195,7 +195,7 @@ class FODStructure:
             #Add to the final list of atoms, without duplicating
             if finalize:
                 if len(self.mfods) == 0:
-                    self.mfods = fod  
+                    self.mfods = fod 
                 else:
                     self.mfods = np.vstack((self.mfods,fod))
 
