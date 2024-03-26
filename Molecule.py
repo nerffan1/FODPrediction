@@ -90,13 +90,24 @@ class Molecule:
         """
         cluster = open("CLUSTER", "w")
         # CLUSTER Preamble
-        cluster.write("LDA-PWA91*LDA-PW91\n")
+        cluster.write("LDA-PW91*LDA-PW91\n")
         cluster.write("NONE\n")
+        cluster.write(f"{len(self.mAtoms)}\n")
         # Loop thorugh each atom for coordinates
         for atom in self.mAtoms:
             coordinate = " ".join(str(x*1.88973) for x in atom.mPos) + " " + str(atom.mZ) + " ALL" + '\n'
             cluster.write(coordinate)
         cluster.write(f"{self.mQ} {0.0}")  # TODO: Make a variable that contains sum of all spins
+        cluster.close()
+    
+    def CreateFRMORB(self):
+        cluster = open("FRMORB", "w")
+        # CLUSTER Preamble
+        cluster.write(f"{len(GlobalData.mFODs)}\n")
+        # Loop thorugh each atom for coordinates
+        for fod in GlobalData.mFODs:
+            coordinate = " ".join(str(x*1.88973) for x in fod.mPos) + '\n'
+            cluster.write(coordinate)
         cluster.close()
 
     def ClosedMol(self):
