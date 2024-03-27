@@ -38,6 +38,7 @@ class Molecule:
 
         # Reverse Determine Parameters with a target file
         if RelaxedFODs != None:
+            self.mTargetFile = RelaxedFODs
             self.mRelaxPos = []
             self.__LoadTargetFODs(RelaxedFODs)
             self.ReverseDetermination()
@@ -210,7 +211,10 @@ class Molecule:
         # Load positions as ndarrays
         for i in range(upcount):
             coor = Target.readline().split()
-            atom_xyz = np.array([float(x) for x in coor[0:3]])  # May have to convert to angstrom?
+            if self.mTargetFile == 'FRMORB':
+                atom_xyz = np.array([float(x)*(1/1.88973) for x in coor[0:3]])
+            else:
+                atom_xyz = np.array([float(x) for x in coor[0:3]])
             self.mRelaxPos.append(atom_xyz)  # Name and Position
         Target.close()
 
