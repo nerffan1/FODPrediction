@@ -86,9 +86,11 @@ class Atom:
 
     def AverageBFODDir(self):
         """
-        Returns the sum of all the BondDir of all owned BFODs. 
-        It is of particular use for finding the direction of FFODs.
+        Returns the average vector of all the of all BFODs in atom. It is of particular use for finding the direction of FFODs.
+        If the displacement is too small a planar structure is suggested; thus, a cross-product is taken in order
         TODO: Might require reimplementation for cases where we just want the ATOM-ATOM vector, instead of the FOD vectors?
+        TODO: Use magic numbers in some list elsewhere
+        TODO: Resolve whether to use Atoms or FODs as reference
         """
         resultant = np.zeros(3)
         bfods = self.mFODStruct.mBFODs
@@ -96,11 +98,26 @@ class Atom:
             # If the ffod atom is Meek, then the vector points in its direction! So, no issue here!
             if self == bfod.mMeek:
                 resultant += bfod.mBondDir
-            else: 
-                # When the atom is Bold, the BondDir points away, so you must get the negative
+            # When the atom is Bold, the BondDir points away, so you must get the negative
+            else:
                 resultant -= bfod.mBondDir
+
+        # If the average displacement is too small, then the 3 points are planar
+        resultant /= len(self.mFODStruct.mBFODs)
+
+        if np.linalg.norm(resultant) < .2:
+            vecs = [bfod.mPos-self.mPos for bfod in bfods]
+            vec1 = tofrom(vecs[0],vecs[1])
+            vec2 = tofrom(vecs[1],vecs[2])
+            cross = np.cross(vec1,vec2)
+
+            # Get average distance from other FODs
+            d = np.mean([norm(b) for b in vecs])
+            # Set norm and direction
+            resultant = normalize(cross)*d
+
         # Return the average
-        return resultant/len(self.mFODStruct.mBFODs)
+        return resultant
 
     def CalcSteric_test(self) -> None:
         """

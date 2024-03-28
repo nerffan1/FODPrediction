@@ -87,7 +87,6 @@ class Molecule:
     def CreateCLUSTER(self):
         """
         Creates a CLUSTER file that will serve as an input file for FLOSIC to begin
-        
         """
         cluster = open("CLUSTER", "w")
         # CLUSTER Preamble
