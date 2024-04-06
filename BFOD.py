@@ -26,6 +26,7 @@ class BFOD(FOD):
         self.mBoldR = 0.0
         # Misc 
         self.mBoldPortion = 0.0
+        # Reverse Determination
         if isinstance(target, np.ndarray):
             self.mPos = target
             self.RevDet()

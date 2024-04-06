@@ -5,6 +5,7 @@
 from  globaldata import GlobalData
 from Molecule import *
 from Analysis import *
+from graphing import *
 import sys
 
 dat = GlobalData()
@@ -18,6 +19,8 @@ elif sys.argv[1] == "list":
     print("You provided the 'list' flag. The following file is expected to have several filenames")
     mols = CreateMolecules(sys.argv[2])
     GridPropRatios(mols)
+    atom = input("What atom would you like to generate Radii Histogram for?")
+    Histogram_Radii(mols, atom)
 
 # Determine parameters just for one molecule
 elif len(sys.argv) == 2:
