@@ -392,8 +392,9 @@ class FODStructure:
                     heightdir = RandomPerpDir(self.mBFODs[0].mPos)
                 heightdir = normalize(heightdir)
                 from FFOD import DFFOD
-                _AddFFOD(DFFOD(at1,heightdir))
-                _AddFFOD(DFFOD(at1,-heightdir))
+                a = DFFOD(at1,heightdir)
+                b = DFFOD(at1,-heightdir)
+                _AddFFOD(a,b)
 
             elif free == 3:
                 from FFOD import TFFOD
@@ -456,11 +457,13 @@ class FODStructure:
                     elif shell == 'triaug':
                         pass # For future development: Beyond scope
 
-        #Prepare the valence shell first, since it will help determine the
+        # Prepare the valence shell first, since it will help determine the
         # orientation of the inner shells
         AddBFODs()
         AddCoreElectrons()
         AddFFODs()
+        # Define Valence
+        self.mValence = self.mBFODs + self.mFFODs
             
 ################# ADDITIONAL FUNCTIONS #################
 def BoldMeekDir(at1: Atom, at2: Atom, all=True):

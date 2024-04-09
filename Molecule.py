@@ -127,8 +127,8 @@ class Molecule:
         import FOD_Print
         self.__AssociateTargets()
         # Bonding?
-        for bfod in self.mBFODs:
-            FOD_Print.PrintSidebySide(bfod,bfod.mAssocFOD)
+        #for bfod in self.mBFODs:
+            #FOD_Print.PrintSidebySide(bfod,bfod.mAssocFOD)
 
         # Free?
         # Core?
@@ -159,7 +159,7 @@ class Molecule:
 
         # Create a vertical vector
         c = np.vstack([x for x in self.mRelaxPos])
-        fods = set.union(self.mBFODs, self.mCFODs)
+        fods = set.union(self.mBFODs, self.mCFODs,self.mFFODs)
         for pfod in fods:
             # Get the minimum distance to Target FOD
             distances = distance.cdist([pfod.mPos],c, 'sqeuclidean')
@@ -179,7 +179,7 @@ class Molecule:
             elif isinstance(pfod, CFOD):
                 pfod.mAssocFOD = CFOD(pfod.mAtom, c[index])
             else:
-                print("Invalid classification for FOD")
+                print("Invalid classification for associated FOD")
 
     def __LoadXYZ(self):
         """

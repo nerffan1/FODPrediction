@@ -18,9 +18,10 @@ elif sys.argv[1] == "list":
     assert len(sys.argv) == 3, "You did not provide a list of files to analyze."
     print("You provided the 'list' flag. The following file is expected to have several filenames")
     mols = CreateMolecules(sys.argv[2])
-    GridPropRatios(mols)
-    atom = input("What atom would you like to generate Radii Histogram for?")
-    Histogram_Radii(mols, atom)
+    #GridPropRatios(mols)
+    #Histogram_Radii(mols)
+    Histogram_Deviation(mols)
+    #Angles_Hist(mols)
 
 # Determine parameters just for one molecule
 elif len(sys.argv) == 2:

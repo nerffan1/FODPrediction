@@ -14,6 +14,7 @@ class FFOD(FOD):
         # Reverse Determination parameters
         if isinstance(target, np.ndarray):
             self.mPos = target
+            #self.RevDet()
 
 class SFFOD(FFOD):
     def __init__(self, atom: Atom):
