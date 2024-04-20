@@ -14,9 +14,9 @@ from FOD import FOD
 from BFOD import *
 
 class Molecule:
-    def __init__(self, xyzfile, RelaxedFODs = None) -> None:
+    def __init__(self, source, RelaxedFODs = None) -> None:
         self.mAtoms: List[Atom] = []
-        self.mFile = xyzfile
+        self.mFile = source
         self.mQ = 0
         self.mBonds = []
         self.mBFODs = set()
@@ -24,13 +24,19 @@ class Molecule:
         self.mCFODs = set()
 
         # Load File
-        if xyzfile[-3:] == "pdb":  # WiP. This is a test
-            self.rdmol = Chem.MolFromPDBFile(xyzfile)
+        if source[-3:] == "pdb":  # WiP. This is a test
+            self.rdmol = Chem.MolFromPDBFile(source)
             self.__LoadPDB()
             exit
-        elif xyzfile[-3:] == "xyz":
-            self.rdmol = Chem.MolFromXYZFile(xyzfile)
+        elif source[-3:] == "xyz":
+            self.rdmol = Chem.MolFromXYZFile(source)
+            self.rdmol
             self.__LoadXYZ()
+        else:
+            self.mComment = source + '\n'
+            m = Chem.MolFromSmiles(source)
+            self.rdmol = Chem.AddHs(m)
+            self.__LoadSMILES()
         GlobalData.mAtoms = self.mAtoms
         self.__RD_Bonds()
         self.CheckStericity()
@@ -190,13 +196,32 @@ class Molecule:
         # Extract comment and charge
         self.mComment = XYZ.readline()
         print(self.mComment)
-        self.mQ = int(self.mComment.split()[-1])
+
+        # If blank
+        if self.mComment != '\n':
+            self.mQ = int(self.mComment.split()[-1])
+        
+        # Fill atom information 
         for i in range(count):
             coor = XYZ.readline().split()
             atom_xyz = [float(x) for x in coor[1:4]]
             self.mAtoms.append(Atom(i, coor[0],atom_xyz)) #Name and Position
         XYZ.close()
         print(self.mComment) # Print the comment from the XYZ file 
+
+    def __LoadSMILES(self):
+        """
+        Creates a more appropriate molecule according to the "working with 3D Molecules section of the RDKit documentation.
+        """
+        # Prepare SMILES Molecule with rdkit
+        AllChem.EmbedMolecule(self.rdmol, maxAttempts=8000)
+        AllChem.MMFFOptimizeMolecule(self.rdmol)
+
+        # Load onto FODLego scheme
+        for i,atom in enumerate(self.rdmol.GetAtoms()):
+            coor = self.rdmol.GetConformer().GetAtomPosition(i)
+            name = atom.GetSymbol()
+            self.mAtoms.append(Atom(i, name,coor)) #Name and Position
 
     def __LoadTargetFODs(self, fods):
         """

@@ -310,7 +310,7 @@ class FODStructure:
                 3) If beyond a certain threshold, then rotate the direction 
                 
                 """
-                #(1)Obtain the FOD-Atom-FOD Cross Product. The height in a planar structure
+                # (1) Obtain the FOD-Atom-FOD Cross Product. The height in a planar structure
                 vector_for_cross = []
                 for otherb in self.mAtom.mBonds:
                     if otherb != bond:
@@ -318,7 +318,8 @@ class FODStructure:
                 vector_for_cross -= self.mAtom.mPos
                 D = np.cross(*vector_for_cross)
                 D = normalize(D) 
-                #(2)Measure Angle between D and the Bonding Axis (BA) 
+
+                # (2) Measure Angle between D and the Bonding Axis (BA) 
                 BA = at2.mPos - at1.mPos
                 angle = AngleBetween(BA,D)
                 
@@ -359,6 +360,13 @@ class FODStructure:
                                 vector_for_cross.append(fods.mPos)
                             vector_for_cross -= self.mAtom.mPos
                             return np.cross(*vector_for_cross)
+                elif self.mAtom.mFreePairs == 1:
+                    vector_for_cross = []
+                    for otherb in self.mAtom.mBonds:
+                            vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
+                    vector_for_cross -= self.mAtom.mPos
+                    D = np.cross(*vector_for_cross)
+                    return normalize(D)
                 else:
                     return RandomPerpDir(dir)
 
@@ -380,17 +388,31 @@ class FODStructure:
             TODO: Change conditionals as to create more concise code 
             TODO: Create a series of variables for chosen constants, NO magic numbers
             """
+
+            def ChoosePerpDir():
+                """
+                Return the direction of the double bond FODs
+                """
+                heightdir = np.array([0.0,0.0,0.0])
+                if len(self.mAtom.mBonds) == 2:
+                    heightdir = np.cross(*[fod.mPos - at1.mPos for fod in self.mBFODs],axis=0)
+                elif len(self.mAtom.mBonds) == 1:
+                    heightdir = np.cross(*[fod.mPos - at1.mPos for fod in self.mBFODs],axis=0)
+                elif len(self.mAtom.mBonds) == 3:
+                    heightdir = np.cross(*[bond.mAtoms_p[1] - bond.mAtoms_p[0] for bond in self.mAtom.mBonds], axis=0)
+
+                # Add a check in case the cross product gives 0
+                if (heightdir == np.array([0.0,0.0,0.0])).all():
+                    heightdir = RandomPerpDir(self.mBFODs[0].mPos)
+                return normalize(heightdir)
+
             if len(self.mAtom.mBonds) == 1:
                 #Useful Information
                 at2 = atoms[self.mAtom.mBonds[0].mAtoms[1]]
                 free_dir = self.mAtom.mPos - at2.mPos
 
             if free == 2:
-                heightdir = np.cross(*[fod.mPos for fod in self.mBFODs],axis=0)
-                # Add a check in case the cross product gives 0
-                if (heightdir == np.array([0.0,0.0,0.0])).all():
-                    heightdir = RandomPerpDir(self.mBFODs[0].mPos)
-                heightdir = normalize(heightdir)
+                heightdir = ChoosePerpDir()
                 from FFOD import DFFOD
                 a = DFFOD(at1,heightdir)
                 b = DFFOD(at1,-heightdir)

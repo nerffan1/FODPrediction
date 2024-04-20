@@ -19,7 +19,7 @@ elif sys.argv[1] == "list":
     print("You provided the 'list' flag. The following file is expected to have several filenames")
     mols = CreateMolecules(sys.argv[2])
     #GridPropRatios(mols)
-    #Histogram_Radii(mols)
+    Histogram_Radii(mols)
     Histogram_Deviation(mols)
     #Angles_Hist(mols)
 

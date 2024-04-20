@@ -90,11 +90,15 @@ def Histogram_Deviation(molecules):
 
     # Loop through atoms in all your molecules and find load the distances
     for mol in molecules:
-        for atom in mol.mAtoms:
-            for vfod in atom.mFODStruct.mValence:
-                d = dist(vfod.mPos, vfod.mAssocFOD.mPos)
-                if not np.isnan(d):
-                    devi.append(d)
+        for vfod in mol.mBFODs:
+            d = dist(vfod.mPos, vfod.mAssocFOD.mPos)
+            if not np.isnan(d):
+                devi.append(d)
+        for vfod in mol.mFFODs:
+            d = dist(vfod.mPos, vfod.mAssocFOD.mPos)
+            if not np.isnan(d):
+                devi.append(d)
+
     # Useful data
     min = np.min(devi)
     max = np.max(devi)
@@ -104,7 +108,6 @@ def Histogram_Deviation(molecules):
     # Create histogram
     size = len(devi) 
     bins = np.linspace(0, .6, 25)
-    #bins = 24
     ax.hist(devi, bins=bins, edgecolor='black', alpha=0.7, weights=np.ones(size)/size)
 
     # Title
