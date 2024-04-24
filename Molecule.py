@@ -109,7 +109,7 @@ class Molecule:
     def CreateFRMORB(self):
         cluster = open("FRMORB", "w")
         # CLUSTER Preamble
-        cluster.write(f"{len(GlobalData.mFODs)}\n")
+        cluster.write(f"{len(GlobalData.mFODs)} 0\n")
         # Loop thorugh each atom for coordinates
         for fod in GlobalData.mFODs:
             coordinate = " ".join(str(x*1.88973) for x in fod.mPos) + '\n'
