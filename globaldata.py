@@ -8,6 +8,8 @@
 #  Currently more time to look into heuristics is necessary.
 #Author: Angel-Emilio Villegas S.
 from numpy import where, genfromtxt, sqrt
+from os import path
+from sys import argv
 
 class GlobalData:
     
@@ -17,7 +19,13 @@ class GlobalData:
     
     #Public Functions
     def LoadElements(self):
-        with open('elements2.0', mode ='r') as file:
+        """
+        Loads information from CSV table. This function can probably be deprecated by
+        replacing the information offered by this table using RDKit.
+        """
+        # Get the path to src directory to access elements2.0 file
+        pth = path.dirname(argv[0])
+        with open(f'{pth}/elements2.0', mode ='r') as file:
             return genfromtxt(file, delimiter=',', encoding=None, dtype=None)
 
     def LoadNames(self):
