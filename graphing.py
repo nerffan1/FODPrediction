@@ -3,6 +3,7 @@ from  globaldata import GlobalData
 from matplotlib import pyplot as pp
 from Funcs import dist, AngleBetween
 import numpy as np
+from scipy.spatial.distance import cdist
 
 def graph2sp3():
     x = [x for x in GlobalData.mRadii[10]]
@@ -161,4 +162,56 @@ def Angles_Hist(molecules):
     print(len(uniq))
     print(uniq, np.mean(uniq))
 
-graph2sp3()
+def EdgeD_FFODs(molecules):
+    # Loop through your various molecules
+    tally = {}
+    for mol in molecules:
+        for at in mol.mAtoms:
+            if len(at.mFODStruct.mFFODs) > 0:
+                ffods = [x.mAssocFOD.mPos for x in at.mFODStruct.mFFODs]
+                bfods = [x.mAssocFOD.mPos for x in at.mFODStruct.mBFODs]
+                pairdist = cdist(ffods, bfods)
+                if at.mZ not in tally:
+                    tally[at.mZ] = pairdist.ravel()
+                else:
+                    tally[at.mZ] = np.concatenate((tally[at.mZ], pairdist.ravel()))
+    tally = dict(sorted(tally.items(), key=lambda item: item[0]))
+    print(tally)
+    # Calculate mean and standard deviation for each atom
+    means = []
+    stds = []
+    atoms = []
+    for atom, distances in tally.items():
+        atoms.append(atom)
+        means.append(np.mean(distances))
+        stds.append(np.std(distances))
+
+    # Get edges for monoatomic atoms
+    edges_monoatomic = []
+    for at in atoms:
+        if at < 11:
+            edges_monoatomic.append(GlobalData.mVert[10][at])
+        else:
+            edges_monoatomic.append(GlobalData.mVert[18][at])
+
+    # Create bar chart with error bars for atoms found in the data
+    categories = [symbols[x] for x in atoms]
+    fig, ax = pp.subplots()
+    ax.bar(categories, means, yerr=stds, align='center', alpha=0.5, ecolor='black', capsize=10)
+
+    # Plot empirical data as scatter points
+    ax.scatter(categories, edges_monoatomic, label='Empirical', color='red', s=140)  # Adjust scatter marker size here
+
+    # Customize plot
+    ax.set_xlabel('Atomic Number')
+    ax.set_ylabel('Mean Distance')
+    ax.set_title('Mean Distance with Error Bars for Each Atom')
+    ax.yaxis.grid(True)
+
+    # Show plot
+    pp.show()
+
+symbols = {
+1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C', 7: 'N', 8: 'O', 9: 'F', 10: 'Ne',
+11: 'Na', 12: 'Mg', 13: 'Al', 14: 'Si', 15: 'P', 16: 'S', 17: 'Cl', 18: 'Ar'
+}
