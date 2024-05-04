@@ -32,15 +32,17 @@ class Molecule:
             self.rdmol = Chem.MolFromXYZFile(source)
             self.rdmol
             self.__LoadXYZ()
-        else:
+        else:    # SMILES
             self.mComment = source + '\n'
             m = Chem.MolFromSmiles(source)
             self.rdmol = Chem.AddHs(m)
             self.__LoadSMILES()
+        Chem.rdMolDescriptors.CalcOxidationNumbers(self.rdmol)
         GlobalData.mAtoms = self.mAtoms
         self.__RD_Bonds()
         self.CheckStericity()
         self.CalculateFODs()
+        self._QCFODs()
 
         # Reverse Determine Parameters with a target file
         if RelaxedFODs != None:
@@ -72,6 +74,19 @@ class Molecule:
                 self.mFFODs.add(ffod)
             for cfod in atom.mFODStruct.mCore:
                 self.mCFODs.add(cfod)
+
+    def _QCFODs(self):
+        # Create a list with all FODs. Make into List for index use.
+        allFODs = set.union(self.mBFODs, self.mFFODs)
+        allFODs = list(allFODs)
+        n = len(allFODs)
+        # Double loop without double counting
+        for i in range(n):
+            fod1 = allFODs[i]
+            for j in range(i+1,n):
+                fod2 = allFODs[j]
+                if dist(fod1.mPos, fod2.mPos) < 1:
+                    print(f'Valence FOD at {fod1.mPos} is too close to FOD at {fod2.mPos}')
 
     def CreateXYZ(self):
         """
@@ -159,16 +174,35 @@ class Molecule:
     #Private Methods
     def __AssociateTargets(self):
         """
-        This function associates the target FOD that is nearest to the predicted FOD (i.e. the output of this program).
+        This function associates the target FOD that is nearest to the predicted FOD (i.e. the output of this program). 
+        First it checks for CFODs and removes them from the list (assuming we have the most accuracy on them), and then we start finding the FFODs and BFODs.
+        Note: This is a bit messy.
         """
         from FFOD import FFOD
 
         # Create a vertical vector
         c = np.vstack([x for x in self.mRelaxPos])
-        fods = set.union(self.mBFODs, self.mCFODs,self.mFFODs)
+        fods = self.mCFODs
         for pfod in fods:
             # Get the minimum distance to Target FOD
             distances = distance.cdist([pfod.mPos],c, 'sqeuclidean')
+            index = np.argmin(distances[0])
+
+            # Print general information
+            # Create appropriate associate fod
+            if isinstance(pfod, CFOD):
+                pfod.mAssocFOD = CFOD(pfod.mAtom, c[index])
+                # Exclude the FOD that has been associated from the relaxed list.
+                c = np.delete(c,index,axis=0)
+                print(c)
+            else:
+                print("Invalid classification for associated FOD")
+
+        # Now do the bonding FODs
+        fods = set.union(self.mBFODs, self.mFFODs)
+        for pfod in fods:
+            # Get the minimum distance to Target FOD
+            distances = distance.cdist([pfod.mPos],c)
             index = np.argmin(distances[0])
 
             # Print general information
@@ -182,8 +216,6 @@ class Molecule:
                 pfod.mAssocFOD = FFOD(
                     pfod.mAtom,
                     target=c[index])
-            elif isinstance(pfod, CFOD):
-                pfod.mAssocFOD = CFOD(pfod.mAtom, c[index])
             else:
                 print("Invalid classification for associated FOD")
 
@@ -195,7 +227,6 @@ class Molecule:
         count = int(XYZ.readline()) #Read Size
         # Extract comment and charge
         self.mComment = XYZ.readline()
-        print(self.mComment)
 
         # If blank
         if self.mComment != '\n':
@@ -207,14 +238,14 @@ class Molecule:
             atom_xyz = [float(x) for x in coor[1:4]]
             self.mAtoms.append(Atom(i, coor[0],atom_xyz)) #Name and Position
         XYZ.close()
-        print(self.mComment) # Print the comment from the XYZ file 
+        print(f"Comment in xyz file: {self.mComment}") # Print the comment from the XYZ file 
 
     def __LoadSMILES(self):
         """
         Creates a more appropriate molecule according to the "working with 3D Molecules section of the RDKit documentation.
         """
         # Prepare SMILES Molecule with rdkit
-        AllChem.EmbedMolecule(self.rdmol, maxAttempts=8000)
+        AllChem.EmbedMolecule(self.rdmol, maxAttempts=6000)
         AllChem.MMFFOptimizeMolecule(self.rdmol)
 
         # Load onto FODLego scheme
@@ -235,7 +266,7 @@ class Molecule:
         # Load positions as ndarrays
         for i in range(upcount):
             coor = Target.readline().split()
-            if self.mTargetFile == 'FRMORB':
+            if self.mTargetFile[-6:] == 'FRMORB':
                 atom_xyz = np.array([float(x)*(1/1.88973) for x in coor[0:3]])
             else:
                 atom_xyz = np.array([float(x) for x in coor[0:3]])
@@ -272,6 +303,14 @@ class Molecule:
             # Add the Bonding FODs
             self.mAtoms[at1].mFODStruct.mBFODs.append
             boldMeek = BoldMeek(self.mAtoms[at1],self.mAtoms[at2])
+
+    def __Checks(self):
+        """
+        Check the valency of the atoms.
+        """
+        for atom in self.rdmol.GetAtoms():
+            if atom.GetTotalValence() > 4:
+                pass
  
     def CheckStericity(self):
         """
@@ -307,7 +346,7 @@ class Molecule:
                 print(f'Target: {c[index]}')
                 print(f'Distance: {sqrt(distances[0][index])}')
 
-    def debug_printAtoms(self):
+    def _debug_printAtoms(self):
         """Print atom names and positions"""
         for atom in self.mAtoms:  
             print("---------------------------------")
@@ -323,6 +362,9 @@ class Molecule:
             print(f'Steric Number: {atom.mSteric}')
             print(f'Free Pairs: {atom.mFreePairs}')
             print("Shell (Core) Structure:",*atom.mFODStruct.mCore)
+            print(f'RD Bonds: {at.GetBonds()}')
+            print(f'RD Total Degree of atom: {at.GetTotalDegree()}')
+            print(f'RD Oxidation: {at.GetProp("OxidationNumber")}')
             
             print('BondedAtoms: ')
             for b in atom.mBonds:
