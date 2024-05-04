@@ -4,4 +4,7 @@ FRMORB
 .vscode
 debug_bfod.xyz
 __pycache__/
+*.svg
+*.png
+*.jpg
 
