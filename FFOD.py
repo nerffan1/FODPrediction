@@ -73,7 +73,7 @@ class DFFOD(FFOD):
     def DetermineR(self) -> float:
         # Determine the angle at which the DFFODs open! 220 rule
         neighbors = self.mAtom.GetVectoNeighbors()
-        bfod = self.mAtom.GetBFODs()[-1]
+        bfod = self.mAtom.GetBFODs()[0]
         if self.mAtom == bfod.mMeek:
             F = bfod.mMeekR
         else:
@@ -91,10 +91,14 @@ class DFFOD(FFOD):
             phi = AngleBetween(self.mFreeDir,vec2bfod) 
             E = self.mAtom.GetMonoCovalEdge()
             
-            # Finalize 
+            # Finalize
+            val = E**2 - F**2 + 2*F*E*np.cos(phi)*np.cos(theta) 
+            # In order to not run into an issue, we can give F an increase to make sure this isn't the case anymore. This was present in H2O, probably due to the sensitivity of having Hs (which we cannot explain yet)
+            if (val < 0):
+                E *= 1.2
             return  np.sqrt(E**2 - F**2 + 2*F*E*np.cos(phi)*np.cos(theta))
         else:
-            return F
+            return 
 
     def ReverseDetermination(self, targetFOD: np.ndarray):
         """
