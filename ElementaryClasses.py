@@ -14,6 +14,7 @@ from numpy import sqrt
 from numpy.linalg import norm
 from typing import List
 from scipy.spatial.transform import Rotation as R
+from scipy.spatial.distance import cdist
 import csv
 from Bond import *
 from FOD import *
@@ -40,6 +41,19 @@ class Atom:
         self.mCompleteVal = False
         
     #Parameters from GlobalData
+    def GetAssocEdges_B_F_FOD(self):
+        """
+        Returns the inter FFOD-BFOD distances.
+        """
+        # Only us
+        dists = []
+        if len(self.mFODStruct.mFFODs) > 0:
+                ffods = [x.mAssocFOD.mPos for x in self.mFODStruct.mFFODs]
+                bfods = [x.mAssocFOD.mPos for x in self.mFODStruct.mBFODs ]
+                pairdD = cdist(ffods,bfods)
+                dists = pairdD.ravel()
+        return dists
+
     def GetMonoCovalRad(self): 
         elecs = GlobalData.GetFullElecCount(self.mGroup, self.mPeriod)
         return GlobalData.mRadii[elecs][self.mZ]
@@ -63,9 +77,12 @@ class Atom:
 
     def GetBFODs(self):
         return self.mFODStruct.mBFODs
+    
+    def GetFFODs(self):
+        return self.mFODStruct.mFFODs
 
-    def AddBond(self, atom2: int, order: int):
-        self.mBonds.append(Bond(self.mI, atom2,order))
+    def AddBond(self, atom2, order: int):
+        self.mBonds.append(Bond(self, atom2,order))
 
     def AddBFOD(self, fod):
         self.mFODStruct.mBFODs.append(fod)
@@ -80,7 +97,7 @@ class Atom:
         """
         freedir = []
         for bond in self.mBonds:
-            at2 = GlobalData.mAtoms[bond.mAtoms[1]]
+            at2 = bond.mAtoms[1]
             freedir.append(at2.mPos - self.mPos)
         return freedir
 
@@ -184,7 +201,7 @@ class FODStructure:
         self.mCore = [] #A list of FODShells
         self.mCoreShells = []
         self.mValence = [] #A list of FODs
-        self.mBFODs = []
+        self.mBFODs: List[FOD] = []
         self.mFFODs: List[FOD] = []
         self.mfods = [] #All Finalized FODs
         self.mLastBond = 0
@@ -314,7 +331,7 @@ class FODStructure:
                 vector_for_cross = []
                 for otherb in self.mAtom.mBonds:
                     if otherb != bond:
-                        vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
+                        vector_for_cross.append(otherb.mAtoms[1].mPos)
                 vector_for_cross -= self.mAtom.mPos
                 D = np.cross(*vector_for_cross)
                 D = normalize(D) 
@@ -363,7 +380,7 @@ class FODStructure:
                 elif self.mAtom.mFreePairs == 1:
                     vector_for_cross = []
                     for otherb in self.mAtom.mBonds:
-                            vector_for_cross.append(atoms[otherb.mAtoms[1]].mPos)
+                            vector_for_cross.append(otherb.mAtoms[1].mPos)
                     vector_for_cross -= self.mAtom.mPos
                     D = np.cross(*vector_for_cross)
                     return normalize(D)
@@ -408,12 +425,12 @@ class FODStructure:
 
             if len(self.mAtom.mBonds) == 1:
                 #Useful Information
-                at2 = atoms[self.mAtom.mBonds[0].mAtoms[1]]
+                at2 = self.mAtom.mBonds[0].mAtoms[1]
                 free_dir = self.mAtom.mPos - at2.mPos
 
             if free == 2:
-                heightdir = ChoosePerpDir()
                 from FFOD import DFFOD
+                heightdir = ChoosePerpDir()
                 a = DFFOD(at1,heightdir)
                 b = DFFOD(at1,-heightdir)
                 _AddFFOD(a,b)
@@ -447,7 +464,7 @@ class FODStructure:
             Finish determining BFODs. This is done after initializing all initial BFODs.
             """
             for bond in self.mAtom.mBonds:
-                bonded_at = atoms[bond.mAtoms[1]] 
+                bonded_at = bond.mAtoms[1]
                 if bonded_at.mI  > self.mAtom.mI:
                     if bond.mOrder == 1:
                         SingleBond(bonded_at)
