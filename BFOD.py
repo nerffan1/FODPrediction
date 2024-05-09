@@ -85,7 +85,7 @@ class BFOD(FOD):
         # Misc 
         self.mBoldPortion = (np.cos(self.mBoldAngle)*self.mBoldR)/self.mBondDist
         if (self.mBoldPortion > 1): 
-           print('hello')
+           print('Reverse Determination issue. Axial projection proportion over 1.')
 
     def PrintParams(self):
         print(f"{self.mBold.mName}-{self.mMeek.mName}")
@@ -124,11 +124,11 @@ class DBFOD(BFOD):
         Return radial distance from interatomic (bonding) axis. 
         For heterogenous atoms....
         """
-        if self.mBold.mZ == self.mMeek.mZ:
-            return self.mBold.GetMonoCovalEdge()/2
-        else:
-            rad = self.mBold.GetMonoCovalRad()
-            return np.sqrt(rad**2 - r**2)
+        rad = self.mBold.GetMonoCovalRad()
+        val = np.sqrt(rad**2 - r**2)
+        if val < 0:
+            print("The DBFOD prediction cannot be simply determined. ")
+        return val
 
     def GetBondAxProj(self) -> float:
         """
