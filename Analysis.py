@@ -16,9 +16,21 @@ def CreateMolecules(file):
             # Remove leading/trailing whitespaces and newline characters
             files = line.strip()
             files = files.split()
-            # Create an instance of the Molecule class with the file_name parameter
-            Mols.append(Molecule(files[0],files[1]))
 
+            # Create an instance of the Molecule class with the file_name parameter
+            if len(files) == 2:
+                try:
+                    m = Molecule(files[0],files[1])
+                    Mols.append(m)
+                except:
+                    print(f'Molecule with input structure {files[0]} cannot be loaded properly. Skipping')
+                    continue
+            elif len(files) == 3:
+                try:
+                    m = Molecule(files[0],files[1], files[2])
+                    Mols.append(m)
+                except:
+                    continue
     # Return list of molecules
     return Mols
 
