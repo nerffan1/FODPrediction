@@ -99,7 +99,6 @@ class GlobalData:
     mGeo_Ladder = { 2: ['point'], 
                         4: ['point','point'],
                         10: ['point','tetra'], 
-                        12: ['point','tetra', 'point'],
                         18: ['point', 'tetra', 'tetra'],
                         20: ['point', 'tetra', 'triaug_val', 'point'], 
                         30: ['point', 'tetra', 'triaug', 'point'],

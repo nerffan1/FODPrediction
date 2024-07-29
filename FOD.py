@@ -6,7 +6,7 @@ class FOD:
     def __init__(self, pos: np.ndarray = np.zeros(3)) -> None:
         self.mPos = pos
         self.mSiblings = ()
-        self.mAssocFOD = None
+        self.mAssocFOD: FOD = []
 
     def AddSibling(self, *siblings):
         """
