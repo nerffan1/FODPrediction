@@ -2,6 +2,7 @@ from Funcs import *
 from FOD import *
 from ElementaryClasses import *
 from copy import copy
+
 class FFOD(FOD):
     def __init__(self, atom: Atom, HeightDir = np.zeros(3), target=None):
         super().__init__(copy(atom.mPos))
@@ -14,7 +15,16 @@ class FFOD(FOD):
         # Reverse Determination parameters
         if isinstance(target, np.ndarray):
             self.mPos = target
-            #self.RevDet()
+            self.rev_det()
+
+    def rev_det(self):
+        """
+        Determines the parameters from an FOD of choice
+        """
+        self.mR = dist(self.mPos, self.mAtom.mPos)
+        # self.mFreeDir = normalize(atom2ffod)
+        # self.mAngle = 0.0
+        # self.mHeight = 0.0
 
 class SFFOD(FFOD):
     def __init__(self, atom: Atom):
@@ -88,17 +98,15 @@ class DFFOD(FFOD):
         if self.mAtom.mPeriod <= 3:
             # FreeDirection and Atom-BFOD Angle, plust lengths needed for determination
             vec2bfod = bfod.mPos - self.mAtom.mPos
-            phi = AngleBetween(self.mFreeDir,vec2bfod) 
+            phi = AngleBetween(self.mFreeDir,vec2bfod)
             E = self.mAtom.GetMonoCovalEdge()
-            
+
             # Finalize
-            val = E**2 - F**2 + 2*F*E*np.cos(phi)*np.cos(theta) 
+            val = E**2 - F**2 + 2*F*E*np.cos(phi)*np.cos(theta)
             # In order to not run into an issue, we can give F an increase to make sure this isn't the case anymore. This was present in H2O, probably due to the sensitivity of having Hs (which we cannot explain yet)
             if (val < 0):
                 E *= 1.2
             return  np.sqrt(E**2 - F**2 + 2*F*E*np.cos(phi)*np.cos(theta))
-        else:
-            return 
 
     def ReverseDetermination(self, targetFOD: np.ndarray):
         """

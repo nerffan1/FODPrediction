@@ -73,3 +73,4 @@ def AngleBetween(A: np.ndarray, B: np.ndarray) -> float:
 normalize = lambda v: v/np.linalg.norm(v)
 tofrom = lambda v, w: v - w
 dist = lambda a,b: np.linalg.norm(a-b)
+exists = lambda typ,l: any(isinstance(fod, typ) for fod in l)

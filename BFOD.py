@@ -84,7 +84,9 @@ class BFOD(FOD):
         self.mBoldR = norm(bold2fod)
         # Misc 
         self.mBoldPortion = (np.cos(self.mBoldAngle)*self.mBoldR)/self.mBondDist
-        if (self.mBoldPortion > 1): 
+        if self.mBoldPortion > 0.5:
+            self.mBoldPortion
+        if (self.mBoldPortion > 1):
            print('Reverse Determination issue. Axial projection proportion over 1.')
 
     def PrintParams(self):
@@ -168,12 +170,6 @@ class DBFOD(BFOD):
         toFOD = self.mPos - self.mBold.mPos
         self.mBoldAngle = AngleBetween(self.mBondDir, toFOD)
         self.mBoldR = np.linalg.norm(self.mBold.mPos - self.mPos)
-
-    def Duplicate(self):
-        """
-        Create the pair FOD. It will contain the same parameters (resulting from the naive
-        solution) as the current (self) FOD, but will change the direction of the FOD.
-        """    
 
 class TBFOD(BFOD):
     def __init__(self, bold: Atom, meek: Atom, heightdir: np.ndarray):

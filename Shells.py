@@ -5,6 +5,10 @@ from numpy.linalg import norm
 from FOD import CFOD
 
 class FODShell:
+    """
+    This is the parent class to a variety of core FOD structures.
+
+    """
     def __init__(self, atom, shape, fods):
         self.mAtom = atom
         self.mShape = shape 
@@ -36,6 +40,7 @@ class Tetra(FODShell):
             CFOD(atom, atom.mPos + s*array([-sqrt(2/9),sqrt(2/3), -1/3])),
             CFOD(atom, atom.mPos + s*array([-sqrt(2/9),-sqrt(2/3), -1/3]))
             ])
+
         # Descriptive Stats. of Predicted FODs
         self.mPred_u_R = 0.0
         self.mPred_s2_R = 0.0
@@ -50,6 +55,6 @@ class Tetra(FODShell):
 class Triaug(FODShell):
     """
     This shape is created for SPD hybridization. It is not part of the scope of Angel's 2024 MS Thesis,
-    However, its preliminary implementation would be here.
+    However, its implementation could go here.
     """
     pass
