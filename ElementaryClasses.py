@@ -1,4 +1,4 @@
-#Description: This file contains as set of classes that will implement the FOD Heuristic Solution 
+#Description: This file contstains as set of classes that will implement the FOD Heuristic Solution
 #  following the paradigm of Object-Oriented Programming (OOP). Encapsulation for FOD_Structure, FODs,
 #  FOD_Orbital, among other things will be included in this file.
 # Roadmap: Use polymorphism for Closed Hybrid Shells (e.g. sp3).
@@ -22,7 +22,7 @@ from FOD import *
 ################# FOD STRUCTURE #################
 
 class Atom:
-    def __init__(self, index: int, Name: str, Pos):
+    def __init__(self, index: int, Name: str, Pos, owner):
         #Known Attributes
         self.mName = Name
         self.mPos = np.array(Pos) 
@@ -31,28 +31,17 @@ class Atom:
         self.mPeriod = int(GlobalData.GetZAtt(self.mZ, "Period" ))
         self.mGroup = int(GlobalData.GetZAtt(self.mZ, "Group" ))
         self.mValCount = self._FindValence()
+        self.mOwner = owner
 
         #Undetermined Attributes
         self.mSteric = 0
         self.mFreePairs = 0
         self.mCharge = 0  # In the future can be changed 
         self.mBonds = []
+        self.mGlobalBonds = []
         self.mFODStruct = FODStructure(self)
         self.mCompleteVal = False
         
-    #Parameters from GlobalData
-    def GetAssocEdges_B_F_FOD(self):
-        """
-        Returns the inter FFOD-BFOD distances.
-        """
-        # Only us
-        dists = []
-        if len(self.mFODStruct.mFFODs) > 0:
-                ffods = [x.mAssocFOD.mPos for x in self.mFODStruct.mFFODs]
-                bfods = [x.mAssocFOD.mPos for x in self.mFODStruct.mBFODs ]
-                pairdD = cdist(ffods,bfods)
-                dists = pairdD.ravel()
-        return dists
 
     def GetMonoCovalRad(self): 
         elecs = GlobalData.GetFullElecCount(self.mGroup, self.mPeriod)
@@ -188,7 +177,48 @@ class Atom:
             return True
         else:
             return False
-    
+
+    #Additional Functions
+    def GetAssocEdges_B_F_FOD(self,typ=FOD):
+        """
+        Returns the inter FFOD-BFOD distances.
+        """
+        dists = []
+        if len(self.mFODStruct.mFFODs) > 0 and exists(typ,self.mFODStruct.mFFODs):
+                ffods = [x.mAssocFOD.mPos for x in self.mFODStruct.mFFODs]
+                bfods = [x.mAssocFOD.mPos for x in self.mFODStruct.mBFODs]
+                pairdD = cdist(ffods,bfods)
+                dd = np.tril(pairdD)
+                dd[dd==0] = np.nan
+                dists = dd[~np.isnan(dd)]
+        return dists
+
+    def get_assoc_radii_b_f_fod(self,typ=FOD):
+        """
+        Returns the inter FFOD-BFOD distances.
+        """
+        bfod_radii = []
+        ffod_radii = []
+        if len(self.mFODStruct.mFFODs) > 0 and exists(typ,self.mFODStruct.mFFODs):
+            # Get the radii from the atom using the dominant/schema
+            # If the atom owning the FOD is the Bold atom, then the distance
+            # to that atom is mBoldR
+
+            # BFOD radii
+            for bfod in self.GetBFODs():
+                    d = dist(bfod.mAssocFOD.mPos, self.mPos)
+                    bfod_radii.append(d)
+
+            # FFOD Radii
+            from FFOD import SFFOD
+            for ffod in self.GetFFODs():
+                ffod_radii.append(ffod.mAssocFOD.mR)
+                if ffod.mAssocFOD.mR < .75 and self.mZ == 7 and typ == SFFOD:
+                    print(self.mOwner)
+
+        # Return the rad
+        return bfod_radii, ffod_radii
+
     # Additional Functions
     def __str__(self):
         pass    
@@ -201,7 +231,7 @@ class FODStructure:
         self.mCore = [] #A list of FODShells
         self.mCoreShells = []
         self.mValence = [] #A list of FODs
-        self.mBFODs: List[FOD] = []
+        self.mBFODs: List[BFOD] = []
         self.mFFODs: List[FOD] = []
         self.mfods = [] #All Finalized FODs
         self.mLastBond = 0
@@ -260,59 +290,16 @@ class FODStructure:
        
         at1 = self.mAtom
 
-        def SingleBond(at2: Atom):
+        def SingleBond(at2: Atom, curr_bond: Bond):
            """
            Creates a SBFOD along the axis. The heuristics is found in SBFOD Class
            """
            #Add the BFODs, new way
            boldMeek = BoldMeek(at1,at2)
            newFOD = SBFOD(*boldMeek)
-           _AddFOD(at1,at2,newFOD)
+           _AddBFOD(curr_bond, at1, at2, newFOD)
 
-        def _AddFOD(at1: Atom, at2: Atom, *fods):
-            """
-            This function adds a new FOD to the individual atoms, to the list in GlobalData, and to the FODStructure
-            TODO: Add the FOD to the Valence Structure?
-            """ 
-            # The main purpose of this function is not to not duplicate the FOD in GlobalData
-            # by adding the FODs in each individual atom. This makes this class a type of 
-            # FOD manager in addition to constructing the structure.
-            # The reason why we don't load FODs directly
-            # is because we don't know whether at1 or at2
-            # is the self.mAtom
-
-            # Create siblings
-            if len(fods) == 2:
-                fods[0].AddSibling(fods[1])
-                fods[1].AddSibling(fods[0])
-            elif len(fods) == 3:
-                fods[0].AddSibling(fods[1],fods[2])
-                fods[1].AddSibling(fods[0],fods[2])
-                fods[2].AddSibling(fods[0],fods[1])
-            # Add to atoms and globaldata
-            for fod in fods:
-                at1.AddBFOD(fod)
-                at2.AddBFOD(fod)
-                GlobalData.mFODs.append(fod)
-                GlobalData.mBFODs.append(fod)
-        
-        def _AddFFOD(*ffods):
-            """
-            TODO: Put this on a bigger scope
-            """
-            # Create siblings. Manually seemed the fastest way to implement.
-            if len(ffods) == 2:
-               ffods[0].AddSibling(ffods[1])
-               ffods[1].AddSibling(ffods[0])
-            elif len(ffods) == 3:
-               ffods[0].AddSibling(ffods[1],ffods[2])
-               ffods[1].AddSibling(ffods[0],ffods[2])
-               ffods[2].AddSibling(ffods[0],ffods[1])
-            for ffod in ffods:
-                self.mFFODs.append(ffod)
-                GlobalData.mFODs.append(ffod)          
-
-        def DoubleBond(at2: Atom, bond: Bond):
+        def DoubleBond(at2: Atom, curr_bond: Bond):
             """
             Create the FODs representing the double bond. Currently the FOD filling is unidirectional (sequential)
             and  does not account for the next atom in the iteration to see if we can further accomodate the bonding FODs 
@@ -330,7 +317,7 @@ class FODStructure:
                 # (1) Obtain the FOD-Atom-FOD Cross Product. The height in a planar structure
                 vector_for_cross = []
                 for otherb in self.mAtom.mBonds:
-                    if otherb != bond:
+                    if otherb != curr_bond:
                         vector_for_cross.append(otherb.mAtoms[1].mPos)
                 vector_for_cross -= self.mAtom.mPos
                 D = np.cross(*vector_for_cross)
@@ -368,7 +355,7 @@ class FODStructure:
                     if len(self.mAtom.mBonds) == 3:
                         return  HeightDir_fromNeighborBFODs()
                     elif len(self.mAtom.mBonds) == 2:
-                        if self.mAtom.mBonds.index(bond) == 0:
+                        if self.mAtom.mBonds.index(curr_bond) == 0:
                             return RandomPerpDir(dir)
                         else:
                             # Cross product between atom and already-placed FODs
@@ -398,7 +385,51 @@ class FODStructure:
                     # Create FODs and link
                     f1 = DBFOD(dom,sub,axis2fod)
                     f2 = DBFOD(dom,sub,-axis2fod)
-                    _AddFOD(dom,sub, f1, f2)
+                    _AddBFOD(curr_bond, dom, sub, f1, f2) # Does dom/sub matter, or are at1/at2 fine?
+
+        def _AddBFOD(curr_bond: Bond, at1: Atom, at2: Atom, *fods):
+            """
+            This function adds a new FOD to the individual atoms, to the list in GlobalData, and to the FODStructure
+            """ 
+            # TODO: Make Bonds easier to deal with by having one instance instead of one per bond per atom (i.e. there are 2 instances of Bond that are slightly for both atoms in a bond)
+            # The main purpose of this function is not to not duplicate the FOD in GlobalData
+            # by adding the FODs in each individual atom. This makes this class a type of 
+            # FOD manager in addition to constructing the structure.
+            # The reason why we don't load FODs directly
+            # is because we don't know whether at1 or at2
+            # is the self.mAtom
+
+            # Create siblings
+            curr_bond.SetFODs(fods)
+            if len(fods) == 2:
+                fods[0].AddSibling(fods[1])
+                fods[1].AddSibling(fods[0])
+            elif len(fods) == 3:
+                fods[0].AddSibling(fods[1],fods[2])
+                fods[1].AddSibling(fods[0],fods[2])
+                fods[2].AddSibling(fods[0],fods[1])
+            # Add to atoms and globaldata
+            for fod in fods:
+                at1.AddBFOD(fod)  # Maybe remove this, and instead do a getter function
+                at2.AddBFOD(fod)
+                GlobalData.mFODs.append(fod)
+                GlobalData.mBFODs.append(fod)
+        
+        def _AddFFOD(*ffods):
+            """
+            TODO: Put this on a bigger scope
+            """
+            # Create siblings. Manually seemed the fastest way to implement.
+            if len(ffods) == 2:
+               ffods[0].AddSibling(ffods[1])
+               ffods[1].AddSibling(ffods[0])
+            elif len(ffods) == 3:
+               ffods[0].AddSibling(ffods[1],ffods[2])
+               ffods[1].AddSibling(ffods[0],ffods[2])
+               ffods[2].AddSibling(ffods[0],ffods[1])
+            for ffod in ffods:
+                self.mFFODs.append(ffod)
+                GlobalData.mFODs.append(ffod)          
 
         def AddFreeElectron(free: int):
             """
@@ -444,7 +475,7 @@ class FODStructure:
                 f3 = TFFOD(at1, norms[2])
                 _AddFFOD(f1,f2,f3)
 
-        def TripleBond(at2: Atom):
+        def TripleBond(at2: Atom, curr_bond: Bond):
             """
             #TODO: Create a helper funtion for conditional statements
             """
@@ -457,7 +488,7 @@ class FODStructure:
             f1 = TBFOD(*boldmeek, norms[0])
             f2 = TBFOD(*boldmeek, norms[1])
             f3 = TBFOD(*boldmeek, norms[2])
-            _AddFOD(at1,at2,f1,f2,f3)
+            _AddBFOD(curr_bond, at1, at2, f1, f2, f3)
 
         def AddBFODs():
             """
@@ -467,11 +498,11 @@ class FODStructure:
                 bonded_at = bond.mAtoms[1]
                 if bonded_at.mI  > self.mAtom.mI:
                     if bond.mOrder == 1:
-                        SingleBond(bonded_at)
+                        SingleBond(bonded_at, bond)
                     elif bond.mOrder == 2:
                         DoubleBond(bonded_at, bond)
                     elif bond.mOrder == 3:
-                        TripleBond(bonded_at)
+                        TripleBond(bonded_at, bond)
 
         def AddFFODs():
             from FFOD import SFFOD, DFFOD, TFFOD 
@@ -501,6 +532,7 @@ class FODStructure:
         AddBFODs()
         AddCoreElectrons()
         AddFFODs()
+
         # Define Valence
         self.mValence = self.mBFODs + self.mFFODs
             
