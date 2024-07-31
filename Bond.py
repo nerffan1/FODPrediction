@@ -11,6 +11,9 @@ class Bond:
 
     # Methods
     def SetFODs(self, fods):
+        """
+        Set the FODs belonging to this bond.
+        """
         self.mFODs = fods
 
     def GetDist(self):

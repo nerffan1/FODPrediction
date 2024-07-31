@@ -17,11 +17,11 @@ from BFOD import *
 
 class Molecule:
     def __init__(self, source, RelaxedFODs = None, OgXYZ = None) -> None:
+        # Molecular Parameters
         self.mAtoms: List[Atom] = []
-        self.mSrc = source
         self.mComment = ''
         self.mQ = 0
-        self.mBonds = []
+        self.mBonds: List[Bond] = []
         self.mBFODs = set()
         self.mFFODs = set()
         self.mCFODs = set()
@@ -29,13 +29,12 @@ class Molecule:
         self.mValidStruct = True
 
         # Associated files
-        self.corereference = OgXYZ
+        self.mSrc: str = source
+        self.mOgXYZ = OgXYZ
         self.mTargetFile = RelaxedFODs
 
         # Load File
-        rdDistGeom.EmbedParameters.enableSequentialRandomSeeds=False
-        rdDistGeom.EmbedParameters.maxIterations=1
-        self.__LoadSource(source, OgXYZ)
+        self._LoadSource()
         self.__RD_Bonds()
         self.CheckStericity()
         self.CalculateFODs()
@@ -45,7 +44,7 @@ class Molecule:
         # Reverse Determine Parameters with a target file
         if RelaxedFODs != None:
             self.mRelaxPos = []
-            self.__LoadTargetFODs(RelaxedFODs)
+            self.__LoadTargetFODs()
             self.ReverseDetermination()
             if OgXYZ != None:
                 self.CreateCompXYZ()
@@ -56,6 +55,7 @@ class Molecule:
         Loop through the atoms and call respective methods to 
         calculate the FOD shells
         """
+        # TODO: Find a way to just add them deterministically, since sets mess order
         for atom in self.mAtoms:
             atom.mFODStruct.PrepareShells(self.mAtoms)
             # Add the calculated FODs to the molecule
@@ -77,7 +77,7 @@ class Molecule:
             fod1 = allFODs[i]
             for j in range(i+1,n):
                 fod2 = allFODs[j]
-                if dist(fod1.mPos, fod2.mPos) < 0.8:
+                if dist(fod1.mPos, fod2.mPos) < 0.4:
                     print(f'Valence FOD at {fod1.mPos} is very close to FOD at {fod2.mPos}')
 
     def CreateSDF(self):
@@ -93,15 +93,17 @@ class Molecule:
         """
         with open("lego.xyz",'w') as output:
             #First 2 lines
-            output.write(str(len(self.mAtoms) + len()) + '\n')
+            output.write(str(len(self.mAtoms) + len(self.mFODs)) + '\n')
             output.write(self.mComment)
-            #Write all atoms
+            # Write all atoms
             for atom in self.mAtoms:
-                output.write(' '.join([atom.mName,*[str(x) for x in atom.mPos]]) + '\n')
-            #Write all FODs
+                atom_coords = ' '.join([f"{x:7.4f}" for x in atom.mPos])
+                output.write(f"{atom.mName} {atom_coords}\n")
+            
+            # Write all FODs
             for fod in self.mFODs:
-                    xyz = " ".join([str(x) for x in fod.mPos])   
-                    output.write(f"X {xyz} \n")
+                fod_coords = ' '.join([f"{x:7.4f}" for x in fod.mPos])
+                output.write(f"X {fod_coords}\n")
     
     def CreateCLUSTER(self):
         """
@@ -112,9 +114,10 @@ class Molecule:
         cluster.write("LDA-PW91*LDA-PW91\n")
         cluster.write("NONE\n")
         cluster.write(f"{len(self.mAtoms)}\n")
+
         # Loop thorugh each atom for coordinates
         for atom in self.mAtoms:
-            coordinate = " ".join(str(x*1.88973) for x in atom.mPos) + " " + str(atom.mZ) + " ALL" + '\n'
+            coordinate = " ".join( f"{x * 1.88973:10.5f}" for x in atom.mPos) + " " + str(atom.mZ) + " ALL" + '\n'
             cluster.write(coordinate)
         cluster.write(f"{self.mQ} {0.0}")  # TODO: Make a variable that contains sum of all spins
         cluster.close()
@@ -125,7 +128,7 @@ class Molecule:
         cluster.write(f"{len(GlobalData.mFODs)} 0\n")
         # Loop thorugh each atom for coordinates
         for fod in GlobalData.mFODs:
-            coordinate = " ".join(str(x*1.88973) for x in fod.mPos) + '\n'
+            coordinate = " ".join( f"{x * 1.88973:7.4f}" for x in fod.mPos) + '\n'
             cluster.write(coordinate)
         cluster.close()
 
@@ -172,7 +175,6 @@ class Molecule:
                 # For a tetra, get average radii
                 if shell.mShape == 'point':
                     core_dist = norm(atom.mPos - shell.mfods[0].mPos)
-                    print(core_dist)
                 elif shell.mShape == 'tetra':
                     targets = np.vstack([x.mAssocFOD.mPos for x in shell.mfods])
                     target_R = distance.cdist([atom.mPos], targets, 'euclidean')
@@ -184,11 +186,30 @@ class Molecule:
                     shell.mPred_u_R = np.mean(pred_radii)
                     shell.mTarget_s2_R = np.var(pred_radii)
 
+    # Getters
     def GeFBEdges(self):
         for at in self.mAtoms:
             edges = at.GetAssocEdges_B_F_FOD()
             if len(edges) > 0:
                 print(edges)
+
+    def get_ffod(self, type):
+        return [f for f in self.mFFODs if isinstance(f,type)]
+
+    def get_bfod(self, type):
+        return [f for f in self.mBFODs if isinstance(f,type)]
+
+    # Logical Expressions
+    def has_fodtype(self, type) -> bool:
+        """
+        Checks if the molecule contains a specific type of FOD.
+        """
+        has = False
+        for fod in self.mFFODs:
+            if isinstance(fod,type):
+                print(self.mSrc)
+                has = True
+        return has
 
     #Private Methods
     def __AssociateTargets(self):
@@ -243,24 +264,6 @@ class Molecule:
                     target=rlx[index])
                 rlx = np.delete(rlx,index,axis=0)
 
-    def __LoadXYZ(self,file):
-        """
-        Load the XYZ file
-        """
-        #TODO: Use RDkit for the position definition, instead of customized readig.
-        XYZ = open(file, "r")
-        count = int(XYZ.readline()) #Read Size
-        # Extract comment and charge
-        self.mComment = XYZ.readline()
-        
-        # Fill atom information 
-        for i in range(count):
-            coor = XYZ.readline().split()
-            atom_xyz = [float(x) for x in coor[1:4]]
-            self.mAtoms.append(Atom(i, coor[0],atom_xyz)) #Name and Position
-        XYZ.close()
-        print(f"Comment in xyz file: {self.mComment}") # Print the comment from the XYZ file 
-
     def __CreateCoordMap(self, file):
         """
         Create a map for the Embedding to work....
@@ -293,10 +296,11 @@ class Molecule:
                 for i,atom in enumerate(self.rdmol.GetAtoms()):
                     coor = self.rdmol.GetConformer().GetAtomPosition(i)
                     name = atom.GetSymbol()
-                    self.mAtoms.append(Atom(i, name,coor)) #Name and Position
-            except:
+                    self.mAtoms.append(Atom(i, name,coor, self)) #Name and Position
+            except Exception as e:
                 self.mValidStruct = False
                 print(f'File with {tmp} not cannot be embeded')
+                print(e.args[0])
         else:
             AllChem.EmbedMolecule(self.rdmol, maxAttempts=8000, randomSeed=-1)
             AllChem.MMFFOptimizeMolecule(self.rdmol)
@@ -304,31 +308,35 @@ class Molecule:
             for i, at in enumerate(self.rdmol.GetAtoms()):
                 name = at.GetSymbol()
                 pos = self.rdmol.GetConformer().GetAtomPosition(i)
-                self.mAtoms.append(Atom(i, name,[pos.x, pos.y, pos.z] ))
+                self.mAtoms.append(Atom(i, name,[pos.x, pos.y, pos.z], self))
 
-    def __LoadTargetFODs(self, target):
+    def __LoadTargetFODs(self):
         """
         Load a file of FOD position to reversedetermine their parameters.
         """
         # Read size of UP/DOWN FODs
-        TargetF = open(target, "r")
-        relx = TargetF.readline().split()
-        upcount = int(relx[0])
-        downcount = int(relx[1])
+        if isinstance(self.mTargetFile, str):
+            TargetF = open(self.mTargetFile, "r")
+            relx = TargetF.readline().split()
+            upcount = int(relx[0])
+            downcount = int(relx[1])
 
-        # Load positions as ndarrays
-        for i in range(upcount):
-            coor = TargetF.readline()
-            coor = coor.replace('D','E')
-            coor = coor.split()
-            if self.mTargetFile[-6:] == 'FRMORB':
-                atom_xyz = np.array([float(x)*(1/1.88973) for x in coor[0:3]])
-            elif self.mTargetFile[-6:] == 'Target':
-                atom_xyz = np.array([float(x) for x in coor[0:3]])
-            else:
-                atom_xyz = np.array([float(x) for x in coor[0:3]])
-            self.mRelaxPos.append(atom_xyz)  # Name and Position
-        TargetF.close()
+            # Load positions as ndarrays
+            for i in range(upcount):
+                coor = TargetF.readline()
+                coor = coor.replace('D','E')
+                coor = coor.split()
+                if self.mTargetFile[-6:] == 'FRMORB':
+                    atom_xyz = np.array([float(x)*(1/1.88973) for x in coor[0:3]])
+                elif self.mTargetFile[-6:] == 'Target':
+                    atom_xyz = np.array([float(x) for x in coor[0:3]])
+                else:
+                    atom_xyz = np.array([float(x) for x in coor[0:3]])
+                self.mRelaxPos.append(atom_xyz)  # Name and Position
+            TargetF.close()
+        elif isinstance(self.mTargetFile, list):
+            print("A list was passed")
+            pass
 
     def __LoadPDB(self):
         """
@@ -338,7 +346,7 @@ class Molecule:
         for i, atom in enumerate(self.rdmol.GetAtoms()):
             position = self.rdmol.GetConformer().GetAtomPosition(i)
             pos = [position.x, position.y, position.z]
-            self.mAtoms.append(Atom(i, atom.GetSymbol(), pos))
+            self.mAtoms.append(Atom(i, atom.GetSymbol(), pos, self))
 
     def __RD_Bonds(self):
         """
@@ -356,7 +364,8 @@ class Molecule:
 
             # Set order and create bonds
             order = rdbond.GetBondTypeAsDouble()
-            self.mBonds.append(Bond(Atom1, Atom2, order))
+            newbond = Bond(Atom1, Atom2, order)
+            self.mBonds.append(newbond)
             Atom1.AddBond(Atom2, order)
             Atom2.AddBond(Atom1, order)
 
@@ -392,32 +401,57 @@ class Molecule:
             count += len(atom.mFODStruct.mfods)
         return count
     
-    def __LoadSource(self, src, OgXYZ = None):
+    def _LoadSource(self):
         """
         Loads the molecule using RDKit. Can take different forms of input to create the molecule.
+        Args:
+            src: The
+            ogXYZ:
         """
-        if OgXYZ == None:
-            if src[-3:] == "pdb":  # WiP. This is a test
-                self.rdmol = Chem.MolFromPDBFile(src)
+        # Parameters
+        rdDistGeom.EmbedParameters.enableSequentialRandomSeeds=False
+        rdDistGeom.EmbedParameters.maxIterations=1
+        AllChem.EmbedParameters.clearConfs = True
+
+        def LoadXYZ(file):
+            """
+            Load the XYZ file
+            """
+            #TODO: Use RDkit for the position definition, instead of customized readig.
+            XYZ = open(file, "r")
+            count = int(XYZ.readline()) #Read Size
+            # Extract comment and charge
+            self.mComment = XYZ.readline()
+
+            # Fill atom information
+            for i in range(count):
+                coor = XYZ.readline().split()
+                atom_xyz = [float(x) for x in coor[1:4]]
+                self.mAtoms.append(Atom(i, coor[0],atom_xyz, self)) #Name and Position
+            XYZ.close()
+            print(f"Comment in xyz file: {self.mComment}") # Print the comment from the XYZ file
+
+        if self.mOgXYZ == None:
+            if self.mSrc[-3:] == "pdb":  # WiP. This is a test
+                self.rdmol = Chem.MolFromPDBFile(self.mSrc)
                 self.__LoadPDB()
-                exit
-            elif src[-3:] == "xyz":
-                self.rdmol = Chem.MolFromXYZFile(src)
-                self.__LoadXYZ(src)
-                #RDKit Functionality to determine the bonding.
+
+            elif self.mSrc[-3:] == "xyz":
+                self.rdmol = Chem.MolFromXYZFile(self.mSrc)
+                LoadXYZ(self.mSrc)
                 rdDetermineBonds.DetermineConnectivity(self.rdmol)
                 rdDetermineBonds.DetermineBondOrders(self.rdmol, charge=self.mQ)
-            else: # SMILES
-                self.mComment = src + '\n'
-                AllChem.EmbedParameters.enableSequentialRandomSeeds = False
-                AllChem.EmbedParameters.clearConfs = True
-                m = Chem.MolFromSmiles(src)
+
+            else:  # SMILES
+                m = Chem.MolFromSmiles(self.mSrc)
                 self.rdmol = Chem.AddHs(m)
+                self.mComment = self.mSrc + '\n'
                 self.__LoadSMILES()
+
         else:
-                self.rdmol = Chem.MolFromSmiles(src)
+                self.rdmol = Chem.MolFromSmiles(self.mSrc)
                 self.rdmol = Chem.AddHs(self.rdmol)
-                self.__LoadSMILES(OgXYZ)
+                self.__LoadSMILES(self.mOgXYZ)
 
         # Read RDKit documentation. They said this was in experimentation. It might help later down the line.
         Chem.rdMolDescriptors.CalcOxidationNumbers(self.rdmol)
@@ -459,8 +493,8 @@ class Molecule:
             
             print('BondedAtoms: ')
             for b in atom.mBonds:
-                bonded = self.mAtoms[b.mAtoms[1]].mName
-                print(f'-- Bonded to {bonded}({b.mAtoms[1]}). Order {b.mOrder}')
+                bonded = b.mAtoms[1].mName
+                print(f'-- Bonded to {bonded}({b.mAtoms[1].mI}). Order {b.mOrder}')
             
             closedshell = atom._CheckFullShell()
             print (f'Shell Full: {closedshell}')
@@ -505,8 +539,8 @@ class Molecule:
 
     #String Output
     def __str__(self) -> str:
-        str1 = self.mComment + "\n"
+        print(self.mTargetFile)
         str2 = f"Atoms: {len(self.mAtoms)}\n"
         str3 = f"Bonds: {len(self.mBonds)}\n"
-        str4 = f"FODs: {len(self.mfods)}\n"
-        return str1+str2+str3+str4 
+        str4 = f"FODs: {len(self.mFODs)}\n"
+        return str2+str3+str4
