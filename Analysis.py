@@ -1171,13 +1171,13 @@ all_energies, all_coords, all_rmsds, labels = load_energies(rec_dir, recordlist)
 #scf_barchart()
 
 
-iter_rmsd_scatter(all_coords, all_energies)
+#iter_rmsd_scatter(all_coords, all_energies)
 # iter_maxD(all_coords, all_energies)
 
-iter_rmsd_scatter_zoom(all_coords, all_energies)
+#iter_rmsd_scatter_zoom(all_coords, all_energies)
 # coordinate_analysis(all_coords, '69')
 # coordinate_analysis(all_coords, '276')
-coordinate_analysis_2(all_coords, '276', '69')
+#coordinate_analysis_2(all_coords, '276', '69')
 #iter_energy_scatter(all_coords, all_energies)
 #plot_global_rate(fodloop_checkpoints, all_energies)
-plt.show()
+#plt.show()

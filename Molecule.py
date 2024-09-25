@@ -80,14 +80,14 @@ class Molecule:
                 if dist(fod1.mPos, fod2.mPos) < 0.4:
                     print(f'Valence FOD at {fod1.mPos} is very close to FOD at {fod2.mPos}')
 
-    def CreateSDF(self):
+    def CreateSDF(self) -> None:
         """
         Create a SDF file!
         """ 
         writer = Chem.SDWriter(self.mSrc + '.sdf')
         writer.write(self.rdmol)
 
-    def CreateXYZ(self):
+    def CreateXYZ(self) -> None:
         """
         Create an XYZ file with
         """
@@ -105,7 +105,7 @@ class Molecule:
                 fod_coords = ' '.join([f"{x:7.4f}" for x in fod.mPos])
                 output.write(f"X {fod_coords}\n")
     
-    def CreateCLUSTER(self):
+    def CreateCLUSTER(self) -> None:
         """
         Creates a CLUSTER file that will serve as an input file for FLOSIC to begin
         """
@@ -122,7 +122,7 @@ class Molecule:
         cluster.write(f"{self.mQ} {0.0}")  # TODO: Make a variable that contains sum of all spins
         cluster.close()
     
-    def CreateFRMORB(self):
+    def CreateFRMORB(self) -> None:
         cluster = open("FRMORB", "w")
         # CLUSTER Preamble
         cluster.write(f"{len(GlobalData.mFODs)} 0\n")
@@ -132,35 +132,43 @@ class Molecule:
             cluster.write(coordinate)
         cluster.close()
 
-    def ClosedMol(self):
+    def ClosedMol(self) -> bool:
         """
-        Checks that all atoms in the molecule have a 
+        Checks that all atoms in the molecule have a closed shell
         """
         for atom in self.mAtoms:
             if atom._CheckFullShell() == False:
                 return False
         return True
 
-    def CreateCompXYZ(self):
+    def CreateCompXYZ(self) -> None:
+        """
+        A file, with the postfix "legocomp.xyz", with two sets of FODs is written.
+        FODLego predictions are written as 'X' atoms.
+        The relaxed FODs are written as 'He' atoms.
+        """
         file = self.mComment
-        with open(f"{file[:-4]}_legocomp.xyz",'w') as output:
+        prefix = file[:-4]
+        with open(f"{prefix}_legocomp.xyz",'w') as output:
             #First 2 lines
             output.write(str(len(self.mAtoms) + 2*len(self.mFODs)) + '\n')
             output.write(self.mComment)
             #Write all atoms
             for atom in self.mAtoms:
                 output.write(' '.join([atom.mName,*[str(x) for x in atom.mPos]]) + '\n')
+
             #Write all FODs
             fods = set.union(self.mBFODs, self.mCFODs, self.mFFODs)
             for bfod in fods:
                 xyz = " ".join([str(x) for x in bfod.mPos])   
                 output.write(f"X {xyz}\n")
+
             # Write the Relaxed FODs read from comparison
             for relaxed in self.mRelaxPos:
                 pos = " ".join([str(x) for x in relaxed])   
                 output.write(f"He {pos}\n")
 
-    def ReverseDetermination(self):
+    def ReverseDetermination(self) -> None:
         """
         This function executes the reversedetermination of paramters for all Target FODs that have
         been associated with the predicted FODs.
@@ -188,10 +196,13 @@ class Molecule:
 
     # Getters
     def GeFBEdges(self):
+        import logging
         for at in self.mAtoms:
             edges = at.GetAssocEdges_B_F_FOD()
             if len(edges) > 0:
-                print(edges)
+                logging.info(edges)
+            else:
+                logging.info("No edges found")
 
     def get_ffod(self, type):
         return [f for f in self.mFFODs if isinstance(f,type)]
