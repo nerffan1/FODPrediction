@@ -14,6 +14,9 @@ from ElementaryClasses import *
 from Bond import *
 from FOD import FOD
 from BFOD import *
+import logging
+logging.basicConfig(format="%(levelname)s:Molecule.py:%(message)s")
+
 
 class Molecule:
     def __init__(self, source, RelaxedFODs = None, OgXYZ = None) -> None:
@@ -296,11 +299,15 @@ class Molecule:
         """
         Creates a more appropriate molecule according to the "working with 3D Molecules section of the RDKit documentation.
         """
+        # Seed a random number
+        from random import randint
+        seed = randint(0,5000)
+
         # Prepare SMILES Molecule with rdkit
         if tmp != None:
             core = Chem.MolFromXYZFile(tmp)
             try:
-                self.rdmol = AllChem.ConstrainedEmbed(self.rdmol, core, randomseed=-1, maxAttempts=8000)
+                self.rdmol = AllChem.ConstrainedEmbed(self.rdmol, core, randomseed=seed, maxAttempts=8000)
                 AllChem.MMFFOptimizeMolecule(self.rdmol)
 
                 # Load onto FODLego scheme
@@ -313,7 +320,7 @@ class Molecule:
                 print(f'File with {tmp} not cannot be embeded')
                 print(e.args[0])
         else:
-            AllChem.EmbedMolecule(self.rdmol, maxAttempts=8000, randomSeed=-1)
+            AllChem.EmbedMolecule(self.rdmol, maxAttempts=8000, randomSeed=seed)
             AllChem.MMFFOptimizeMolecule(self.rdmol)
 
             for i, at in enumerate(self.rdmol.GetAtoms()):
@@ -380,13 +387,14 @@ class Molecule:
             Atom1.AddBond(Atom2, order)
             Atom2.AddBond(Atom1, order)
 
-    def _CheckChemValency(self):
+    def _CheckChemValency(self) -> None:
         """
-        Check the valency of the atoms.
+        Check that the valency of the atoms is no more than four.
+        This assumes max sp3 hybridization of orbitals.
         """
         for atom in self.rdmol.GetAtoms():
             if atom.GetTotalValence() > 4 and self.mValidStruct == True:
-                print(f"Non simple bonding at {atom.GetSymbol()} in {self.mSrc}")
+                logging.warning(f"Non simple bonding at {atom.GetSymbol()} in {self.mSrc}. Valency above 4.")
                 self.mValidStruct = False
 
     def _CheckRadicals(self):
