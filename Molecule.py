@@ -15,7 +15,7 @@ from Bond import *
 from FOD import FOD
 from BFOD import *
 import logging
-logging.basicConfig(format="%(levelname)s:Molecule.py:%(message)s")
+logging.basicConfig(format="%(levelname)s:%(filename)s:%(funcName)s(): %(message)s")
 
 
 class Molecule:
@@ -297,11 +297,11 @@ class Molecule:
 
     def __LoadSMILES(self, tmp=None):
         """
-        Creates a more appropriate molecule according to the "working with 3D Molecules section of the RDKit documentation.
+        Creates a 3D conformer of the SMILES structure according to the "working with 3D Molecules" section of the RDKit documentation.
         """
         # Seed a random number
         from random import randint
-        seed = randint(0,5000)
+        seed = randint(0,2000)
 
         # Prepare SMILES Molecule with rdkit
         if tmp != None:
