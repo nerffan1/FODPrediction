@@ -7,14 +7,16 @@ from Molecule import *
 from Analysis import *
 from graphing import *
 import sys
+import logging
+logging.basicConfig(format="%(levelname)s:%(filename)s:%(funcName)s(): %(message)s")
 
 dat = GlobalData()
 if len(sys.argv) == 1:
-    print("No arguments were given, please provide XYZ file name")
+    logging.warning("No arguments were given, please provide XYZ file name")
     exit(1)
 
 elif len(sys.argv) == 2:
-    print("One argument passed. Creating FOD Prediction.")
+    logging.info("One argument passed. Creating FOD Prediction.")
     mol = Molecule(sys.argv[1])
     mol.CreateCLUSTER()
     mol.CreateFRMORB()
