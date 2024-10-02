@@ -5,6 +5,7 @@ from rdkit.Chem import rdDetermineBonds
 from rdkit.Chem import rdmolops
 from rdkit.Chem import AllChem
 from rdkit.Chem import rdDistGeom
+from rdkit.Chem import GetPeriodicTable
 from rdkit import Geometry
 # Numpy
 from scipy.spatial import distance
@@ -432,6 +433,32 @@ class Molecule:
         rdDistGeom.EmbedParameters.maxIterations=1
         AllChem.EmbedParameters.clearConfs = True
 
+        def CLUST2XYZ(input_file, output_file):
+            """
+            Load a CLUSTER File into an rdmol
+            """
+            # Function to process the file and convert to .xyz format
+            with open(input_file, 'r') as infile, open(output_file, 'w') as outfile:
+                lines = infile.readlines()
+
+                # Skip the first two lines and get the atom count from the third line
+                atom_count = int(lines[2].strip())
+                outfile.write(f"{atom_count}\n\n")  # XYZ format first line (atom count) and an empty comment line
+
+                # Process the remaining lines
+                for line in lines[3:]:
+                    if len(line.split()) == 2:  # Skip footer if present
+                        continue
+
+                    # Split the line into parts
+                    parts = line.split()
+                    x, y, z = parts[:3]  # First three are the coordinates
+                    atomZ = int(parts[3])  # Atomic number at index 3
+                    element = GetPeriodicTable().GetElementSymbol(atomZ)
+
+                    # Write the element and coordinates in .xyz format
+                    outfile.write(f"{element} {float(x)*0.529177249:10.5f} {float(y)*0.529177249:10.5f} {float(z)*0.529177249:10.6f}\n")
+
         def LoadXYZ(file):
             """
             Load the XYZ file
@@ -458,6 +485,13 @@ class Molecule:
             elif self.mSrc[-3:] == "xyz":
                 self.rdmol = Chem.MolFromXYZFile(self.mSrc)
                 LoadXYZ(self.mSrc)
+                rdDetermineBonds.DetermineConnectivity(self.rdmol)
+                rdDetermineBonds.DetermineBondOrders(self.rdmol, charge=self.mQ)
+
+            elif self.mSrc == "CLUSTER":
+                CLUST2XYZ(self.mSrc, "CLUST.xyz")
+                self.rdmol = Chem.MolFromXYZFile("CLUST.xyz")
+                LoadXYZ("CLUST.xyz")
                 rdDetermineBonds.DetermineConnectivity(self.rdmol)
                 rdDetermineBonds.DetermineBondOrders(self.rdmol, charge=self.mQ)
 
