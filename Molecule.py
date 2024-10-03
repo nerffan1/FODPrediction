@@ -9,14 +9,16 @@ from rdkit.Chem import GetPeriodicTable
 from rdkit import Geometry
 # Numpy
 from scipy.spatial import distance
+# Others
+from os import remove
+import logging
+logging.basicConfig(format="%(levelname)s:%(filename)s:%(funcName)s(): %(message)s")
 # Custom Made library
 from globaldata import GlobalData
 from ElementaryClasses import *
 from Bond import *
 from FOD import FOD
 from BFOD import *
-import logging
-logging.basicConfig(format="%(levelname)s:%(filename)s:%(funcName)s(): %(message)s")
 
 
 class Molecule:
@@ -459,23 +461,18 @@ class Molecule:
                     # Write the element and coordinates in .xyz format
                     outfile.write(f"{element} {float(x)*0.529177249:10.5f} {float(y)*0.529177249:10.5f} {float(z)*0.529177249:10.6f}\n")
 
-        def LoadXYZ(file):
-            """
-            Load the XYZ file
-            """
-            #TODO: Use RDkit for the position definition, instead of customized readig.
-            XYZ = open(file, "r")
-            count = int(XYZ.readline()) #Read Size
-            # Extract comment and charge
-            self.mComment = XYZ.readline()
+        def read_xyz():
+            for i, atom in enumerate(self.rdmol.GetAtoms()):
+                position = self.rdmol.GetConformer().GetAtomPosition(i)
+                pos = [position.x, position.y, position.z]
+                self.mAtoms.append(Atom(i, atom.GetSymbol(), pos, self))
 
-            # Fill atom information
-            for i in range(count):
-                coor = XYZ.readline().split()
-                atom_xyz = [float(x) for x in coor[1:4]]
-                self.mAtoms.append(Atom(i, coor[0],atom_xyz, self)) #Name and Position
-            XYZ.close()
-            print(f"Comment in xyz file: {self.mComment}") # Print the comment from the XYZ file
+        def create_xyz(file: str) -> None:
+            self.mComment = self.mSrc + '\n'
+            self.rdmol = Chem.MolFromXYZFile(file)
+            read_xyz()
+            rdDetermineBonds.DetermineConnectivity(self.rdmol)
+            rdDetermineBonds.DetermineBondOrders(self.rdmol, charge=self.mQ)
 
         if self.mOgXYZ == None:
             if self.mSrc[-3:] == "pdb":  # WiP. This is a test
@@ -483,17 +480,13 @@ class Molecule:
                 self.__LoadPDB()
 
             elif self.mSrc[-3:] == "xyz":
-                self.rdmol = Chem.MolFromXYZFile(self.mSrc)
-                LoadXYZ(self.mSrc)
-                rdDetermineBonds.DetermineConnectivity(self.rdmol)
-                rdDetermineBonds.DetermineBondOrders(self.rdmol, charge=self.mQ)
+                create_xyz(self.mSrc)
 
             elif self.mSrc == "CLUSTER":
+                # Turn CLUSTER into an .xyz file
                 CLUST2XYZ(self.mSrc, "CLUST.xyz")
-                self.rdmol = Chem.MolFromXYZFile("CLUST.xyz")
-                LoadXYZ("CLUST.xyz")
-                rdDetermineBonds.DetermineConnectivity(self.rdmol)
-                rdDetermineBonds.DetermineBondOrders(self.rdmol, charge=self.mQ)
+                create_xyz("CLUST.xyz")
+                remove("CLUST.xyz")
 
             else:  # SMILES
                 m = Chem.MolFromSmiles(self.mSrc)
