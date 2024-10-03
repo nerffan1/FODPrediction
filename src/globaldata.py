@@ -181,6 +181,8 @@ class GlobalData:
             18: 1.1600529303222396
         }
     }
+    AU2ANG = 0.529177249
+    ANG2AU = 1.8897259886
     mAtoms = []
     mFODs = []
     mBFODs = []

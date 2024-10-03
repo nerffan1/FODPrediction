@@ -13,6 +13,7 @@ from scipy.spatial import distance
 from os import remove
 import logging
 logging.basicConfig(format="%(levelname)s:%(filename)s:%(funcName)s(): %(message)s")
+
 # Custom Made library
 from globaldata import GlobalData
 from ElementaryClasses import *
@@ -123,7 +124,7 @@ class Molecule:
 
         # Loop thorugh each atom for coordinates
         for atom in self.mAtoms:
-            coordinate = " ".join( f"{x * 1.88973:10.5f}" for x in atom.mPos) + " " + str(atom.mZ) + " ALL" + '\n'
+            coordinate = " ".join( f"{x * GlobalData.ANG2AU:10.5f}" for x in atom.mPos) + " " + str(atom.mZ) + " ALL" + '\n'
             cluster.write(coordinate)
         cluster.write(f"{self.mQ} {0.0}")  # TODO: Make a variable that contains sum of all spins
         cluster.close()
@@ -134,7 +135,7 @@ class Molecule:
         cluster.write(f"{len(GlobalData.mFODs)} 0\n")
         # Loop thorugh each atom for coordinates
         for fod in GlobalData.mFODs:
-            coordinate = " ".join( f"{x * 1.88973:7.4f}" for x in fod.mPos) + '\n'
+            coordinate = " ".join( f"{x * GlobalData.ANG2AU:7.4f}" for x in fod.mPos) + '\n'
             cluster.write(coordinate)
         cluster.close()
 
@@ -348,7 +349,7 @@ class Molecule:
                 coor = coor.replace('D','E')
                 coor = coor.split()
                 if self.mTargetFile[-6:] == 'FRMORB':
-                    atom_xyz = np.array([float(x)*(1/1.88973) for x in coor[0:3]])
+                    atom_xyz = np.array([float(x)*(GlobalData.AU2ANG) for x in coor[0:3]])
                 elif self.mTargetFile[-6:] == 'Target':
                     atom_xyz = np.array([float(x) for x in coor[0:3]])
                 else:
@@ -455,11 +456,15 @@ class Molecule:
                     # Split the line into parts
                     parts = line.split()
                     x, y, z = parts[:3]  # First three are the coordinates
+                    x = float(x)*GlobalData.AU2ANG
+                    y = float(y)*GlobalData.AU2ANG
+                    z = float(z)*GlobalData.AU2ANG
+
                     atomZ = int(parts[3])  # Atomic number at index 3
                     element = GetPeriodicTable().GetElementSymbol(atomZ)
 
                     # Write the element and coordinates in .xyz format
-                    outfile.write(f"{element} {float(x)*0.529177249:10.5f} {float(y)*0.529177249:10.5f} {float(z)*0.529177249:10.6f}\n")
+                    outfile.write(f"{element} {x:10.5f} {y:10.5f} {z:10.6f}\n")
 
         def read_xyz():
             for i, atom in enumerate(self.rdmol.GetAtoms()):
