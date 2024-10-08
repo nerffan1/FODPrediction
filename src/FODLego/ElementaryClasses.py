@@ -5,19 +5,18 @@
 #  -  Add Tetrahedra class and several attributes/methods to manipulate them
 #  - In far future, somehow implement the triaugmented triangular prism that corresponds to sp3d5 ( 9 FODs, 18 electrons) 
 #Author: Angel-Emilio Villegas S.
-from ast import Global
-from  globaldata import GlobalData
-import Shells
+from  FODLego.globaldata import GlobalData
 import numpy as np
-from Funcs import *
+from FODLego.Funcs import *
 from numpy import sqrt 
 from numpy.linalg import norm
 from typing import List
 from scipy.spatial.transform import Rotation as R
 from scipy.spatial.distance import cdist
-import csv
-from Bond import *
-from FOD import *
+# FODLego Dependencies
+from FODLego.Bond import *
+from FODLego.FOD import *
+import FODLego.Shells as Shells
 
 ################# FOD STRUCTURE #################
 
@@ -285,8 +284,7 @@ class FODStructure:
         TODO: GlobalData.GetFullElecCount() Can be precalculated ahead of time and placed as a member vatrable
         """
         #Lazy loading in order to 
-        from FOD import FOD
-        from BFOD import SBFOD, DBFOD, TBFOD  
+        from FODLego.BFOD import SBFOD, DBFOD, TBFOD
        
         at1 = self.mAtom
 
@@ -460,14 +458,14 @@ class FODStructure:
                 free_dir = self.mAtom.mPos - at2.mPos
 
             if free == 2:
-                from FFOD import DFFOD
+                from FODLego.FFOD import DFFOD
                 heightdir = ChoosePerpDir()
                 a = DFFOD(at1,heightdir)
                 b = DFFOD(at1,-heightdir)
                 _AddFFOD(a,b)
 
             elif free == 3:
-                from FFOD import TFFOD
+                from FODLego.FFOD import TFFOD
                 dir0 = RandomPerpDir(free_dir)
                 norms = RotateNormals(3, dir0, normalize(free_dir)) 
                 f1 = TFFOD(at1, norms[0])
@@ -505,7 +503,7 @@ class FODStructure:
                         TripleBond(bonded_at, bond)
 
         def AddFFODs():
-            from FFOD import SFFOD, DFFOD, TFFOD 
+            from FODLego.FFOD import SFFOD, DFFOD, TFFOD
             if self.mAtom.mFreePairs == 2:
                 if self.mAtom.mSteric >= 3:
                     AddFreeElectron(2)

@@ -2,10 +2,9 @@
 #Atom Class
 # Author: Angel-Emilio Villegas Sanchez
 
-from  globaldata import GlobalData
-from Molecule import *
-from Analysis import *
-from graphing import *
+from FODLego.globaldata import GlobalData
+from FODLego.Molecule import Molecule
+from FODLego.graphing import *
 import sys
 import logging
 logging.basicConfig(format="%(levelname)s:%(filename)s:%(funcName)s(): %(message)s")
@@ -21,7 +20,6 @@ elif len(sys.argv) == 2:
     mol.CreateCLUSTER()
     mol.CreateFRMORB()
     mol.CreateXYZ()
-    #mol._debug_printAtoms()
 
 elif len(sys.argv) == 3:
     if sys.argv[1] == "list":
@@ -49,5 +47,3 @@ elif len(sys.argv) == 3:
         mol = Molecule(sys.argv[1], sys.argv[2])
         mol.CreateCompXYZ()
         #mol.GeFBEdges()
-        #mol._debug_printBFODsXYZ()
-        #mol._debug_printAtoms()

@@ -1,6 +1,5 @@
-from globaldata import GlobalData
-from Funcs import *
-from FOD import FOD
+from FODLego.Funcs import *
+from FODLego.FOD import FOD
 from scipy.spatial import distance
 
 class Bond:

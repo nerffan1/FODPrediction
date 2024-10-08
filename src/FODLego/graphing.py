@@ -1,9 +1,8 @@
 #!/bin/python3
-from BFOD import SBFOD
-from MolecularSet import MolecularSet
-from  globaldata import GlobalData
+from FODLego.MolecularSet import MolecularSet
+from FODLego.globaldata import GlobalData
 from matplotlib import pyplot as pp
-from Funcs import *
+from FODLego.Funcs import *
 import numpy as np
 from scipy.spatial.distance import cdist
 from typing import List
@@ -12,7 +11,7 @@ from rdkit.Chem import GetPeriodicTable
 from matplotlib.textpath import TextPath
 from matplotlib.patches import PathPatch
 import matplotlib.transforms as mtransforms
-from MolecularSet import MolecularSet
+from FODLego.MolecularSet import MolecularSet
 
 symbols = {
 1: 'H', 2: 'He', 3: 'Li', 4: 'Be', 5: 'B', 6: 'C', 7: 'N', 8: 'O', 9: 'F', 10: 'Ne',
@@ -709,7 +708,6 @@ def Intra_DBFOD_Dist(mols: MolecularSet):
     to identify the ways in which edge distance might correlate with the dominance of the bond. 
     """
     import numpy as np
-    from globaldata import GlobalData
     from MolecularSet import MolecularSet
 
     # Dictionary to store bond classes and their associated bond distance
@@ -866,7 +864,6 @@ def Intra_SBFOD_Dist(mols: MolecularSet):
     """
     Analyze SBFOD of whole list of molecules
     """
-    from globaldata import GlobalData
     from MolecularSet import MolecularSet
 
     # Dictionary to store bond classes and their associated bond distance
@@ -1016,7 +1013,6 @@ def Intra_TBFOD_Dist(mols: MolecularSet):
     to identify the ways in which edge distance might correlate with the dominance of the bond.
     """
     import numpy as np
-    from globaldata import GlobalData
     from MolecularSet import MolecularSet
 
     # Dictionary to store bond classes and their associated bond distance

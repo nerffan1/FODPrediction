@@ -1,8 +1,8 @@
-from globaldata import GlobalData
+from FODLego.globaldata import GlobalData
 import numpy as np
 from numpy import sqrt, array
 from numpy.linalg import norm
-from FOD import CFOD
+from FODLego.FOD import CFOD
 
 class FODShell:
     """

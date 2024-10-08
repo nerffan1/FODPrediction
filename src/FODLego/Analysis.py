@@ -8,7 +8,7 @@ import statsmodels.api as sm
 import matplotlib.patches as patches
 
 # Important directories
-savepath='/home/angelemv/thesis_markdown/source/figures/'
+savepath=''
 SURVEY_FILES = []
 ELEC_COUNT = []
 SCF_ITER = []
