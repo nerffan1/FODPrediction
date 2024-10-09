@@ -22,7 +22,3 @@ dependencies = [
 Homepage = "https://github.com/nerffan1/FODLego"
 Issues = "https://github.com/nerffan1/FODLego/issues"
 
-[tool.hatch.build.entry_points]
-console_scripts = [
-    "fodlego = FODLego.main:main",
-]
