@@ -2,7 +2,7 @@
 #Atom Class
 # Author: Angel-Emilio Villegas Sanchez
 
-from FODLego.Molecule import Molecule
+from .Molecule import Molecule
 from FODLego.graphing import *
 import sys
 import logging
@@ -46,5 +46,3 @@ def main():
             mol = Molecule(sys.argv[1], sys.argv[2])
             mol.CreateCompXYZ()
             #mol.GeFBEdges()
-
-main()

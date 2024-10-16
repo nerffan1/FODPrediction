@@ -14,11 +14,14 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
 ]
-dependencies = [
-    "rdkit"
-]
+dependencies = ["rdkit"]
+keywords = ["FODs", "FLOSIC", "DFT", "Fermi-Lowdin", "SIE", "SIC", "self-interaction"]
 
 [project.urls]
 Homepage = "https://github.com/nerffan1/FODLego"
 Issues = "https://github.com/nerffan1/FODLego/issues"
+Documentation = "https://nerffan1.github.io/FLOSICDOC/Reference/Generation.html"
+Website = "https://www.flosic.org/"
 
+[project.scripts]
+fodlego = "FODLego.__main__:main"
