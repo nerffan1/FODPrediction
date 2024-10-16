@@ -5,14 +5,15 @@
 #  -  Add Tetrahedra class and several attributes/methods to manipulate them
 #  - In far future, somehow implement the triaugmented triangular prism that corresponds to sp3d5 ( 9 FODs, 18 electrons) 
 #Author: Angel-Emilio Villegas S.
-from  FODLego.globaldata import GlobalData
+from  .globaldata import GlobalData
 import numpy as np
-from FODLego.Funcs import *
-from numpy import sqrt 
+from numpy import sqrt
 from numpy.linalg import norm
 from typing import List
 from scipy.spatial.transform import Rotation as R
 from scipy.spatial.distance import cdist
+from rdkit.Chem import GetPeriodicTable as PT
+#
 # FODLego Dependencies
 from FODLego.Bond import *
 from FODLego.FOD import *
@@ -26,9 +27,9 @@ class Atom:
         self.mName = Name
         self.mPos = np.array(Pos) 
         self.mI = index
-        self.mZ = GlobalData.GetElementAtt(self.mName, "AtomicNumber")
-        self.mPeriod = int(GlobalData.GetZAtt(self.mZ, "Period" ))
-        self.mGroup = int(GlobalData.GetZAtt(self.mZ, "Group" ))
+        self.mZ = PT().GetAtomicNumber(Name)
+        self.mPeriod = GlobalData.GetPeriod(self.mZ)
+        self.mGroup = GlobalData.GetRow(self.mZ)
         self.mValCount = self._FindValence()
         self.mOwner = owner
 

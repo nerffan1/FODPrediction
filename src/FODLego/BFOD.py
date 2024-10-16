@@ -1,5 +1,4 @@
 from FODLego.Funcs import *
-from FODLego.FOD import *
 from FODLego.ElementaryClasses import *
 from FODLego.globaldata import *
 

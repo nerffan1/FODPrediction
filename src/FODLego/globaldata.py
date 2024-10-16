@@ -10,54 +10,13 @@
 from numpy import where, genfromtxt, sqrt
 from os import path
 from sys import argv
+from numpy import array
+
 
 class GlobalData:
-    
-    def __init__(self):
-        GlobalData.mElementInfo = self.LoadElements()
-        GlobalData.mElemNames = self.LoadNames()
-    
+
     #Public Functions
-    def LoadElements(self):
-        """
-        Loads information from CSV table. This function can probably be deprecated by
-        replacing the information offered by this table using RDKit.
-        """
-        # Get the path to src directory to access elements2.0 file
-        pth = path.dirname(argv[0])
-        with open(f'{pth}/elements2.0', mode ='r') as file:
-            return genfromtxt(file, delimiter=',', encoding=None, dtype=None)
-
-    def LoadNames(self):
-        """
-        Names are loaded in their abbreviated form, since XYZ files receive them this way
-        """
-        return GlobalData.mElementInfo[1:,2]
-
-    def GetElementAtt(name: str, attr: str):
-        """
-        Gets the attribute found in the elements2.0 file
-
-        Parameters:
-        name (str): The name of the atom, in abbreviated form.
-        attr (str): The attribute you want of chosen atom, found in the first row of elements2.0
-
-        """
-        if attr == "AtomicNumber":
-            attrib_i = where(GlobalData.mElemNames == name)  
-            # We must offset index by +1 because the array starts at zero instead of 1
-            return attrib_i[0].item() + 1      
-        else:
-            element_i = where(GlobalData.mElemNames == name)[0]
-            attrib_i = where(GlobalData.mElementInfo[0] == attr)[0]
-            #We offset by 1 because the Info list has attribute names on row 1
-            return GlobalData.mElementInfo[element_i + 1,attrib_i]
-        
-    def GetZAtt(Z: int, attr: str):
-        attrib_i = where(GlobalData.mElementInfo[0] == attr)
-        #We offset by 1 because the Info list has attribute names on row 1
-        return GlobalData.mElementInfo[Z,attrib_i[0].item()]
-
+    @staticmethod
     def GetFullElecCount(group: int, period: int):
         """
         Receive Group number and return the amount of electrons that the atoms contains
@@ -82,13 +41,63 @@ class GlobalData:
             elif period == 5: return 54
             elif period == 6: return 86
 
-    #Degugging tests
-    def _debug_samplenames():
-        for att in ["AtomicNumber", "Group", "Period", "Element","Metal", "NumberofShells","NumberofValence"]:
-            print(f'{att}: {GlobalData.GetElementAtt("Ga", att)}')
-            print(GlobalData.GetZAtt(31, att))
+    @staticmethod
+    def GetRow(Z: int) -> int:
+        row4 = array([22,40,72])
+        row13 = array([5,13,31,49,81])
+        if Z in [1,3,11,19,37,55]:
+            return 1
+        elif Z in [4,12,20,38,56]:
+            return 2
+        elif Z in [21,39]:
+            return 3
+        elif Z in row4:
+            return 4
+        elif Z in row4 + 1:
+            return 5
+        elif Z in row4 + 2:
+            return 6
+        elif Z in row4 + 3:
+            return 7
+        elif Z in row4 + 4:
+            return 8
+        elif Z in row4 + 5:
+            return 9
+        elif Z in row4 + 5:
+            return 10
+        elif Z in row4 + 5:
+            return 11
+        elif Z in row4 + 6:
+            return 12
+        elif Z in row13:
+            return 13
+        elif Z in row13 + 1:
+            return 14
+        elif Z in row13 + 2:
+            return 15
+        elif Z in row13 + 3:
+            return 16
+        elif Z in row13 + 4:
+            return 17
+        elif Z in row13 + 5 or Z==2:
+            return 18
+        else:
+            return -1
 
-    ############Class Variables############    
+    @staticmethod
+    def GetPeriod(Z: int) -> int:
+       p1 = array([1,2])
+       p2 = array([3,10])
+       p4 = array([19,36])
+
+       if Z >= p1[0] and Z <= p1[1]: return 1
+       elif Z >= p2[0] and Z <= p2[1]: return 2
+       elif Z >= p2[0]+8 and Z <= p2[1]+8: return 3
+       elif Z >= p4[0] and Z <= p4[1]: return 4
+       elif Z >= p4[0]+18 and Z <= p4[1]+18: return 5
+       else: return -1
+
+    ############Class Variables############
     mElementInfo = []
     mElemNames = []
     mClosedGroups = [2,12,18]
