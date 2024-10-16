@@ -15,11 +15,11 @@ import logging
 logging.basicConfig(format="%(levelname)s:%(filename)s:%(funcName)s(): %(message)s")
 
 # Custom Made library
-from globaldata import GlobalData
-from ElementaryClasses import *
-from Bond import *
-from FOD import FOD
-from BFOD import *
+from FODLego.globaldata import GlobalData
+from FODLego.ElementaryClasses import *
+from FODLego.Bond import *
+from FODLego.FOD import FOD
+from FODLego.BFOD import *
 
 
 class Molecule:
@@ -180,8 +180,7 @@ class Molecule:
         This function executes the reversedetermination of paramters for all Target FODs that have
         been associated with the predicted FODs.
         """
-        import FOD_Print
-        from Shells import FODShell
+        from FODLego.Shells import FODShell
         self.__AssociateTargets()
         
         #Loop through atoms to deterpmine the average and the variance
@@ -237,7 +236,7 @@ class Molecule:
         Note: This is a bit messy.
         """
         #TODO: Create a function that loops over the things, instead of doing 3 for loops....
-        from FFOD import FFOD
+        from FODLego.FFOD import FFOD
 
         # Create a vector of the distances, vertical
         rlx = np.vstack([x for x in self.mRelaxPos])
@@ -560,7 +559,7 @@ class Molecule:
             print(atom)    
 
     def _debug_printBFODs(self):
-        from ElementaryClasses import Atom
+        from FODLego.ElementaryClasses import Atom
         for atom in GlobalData.mAtoms:
             print(f'In atom {atom.mI}:')
             for bfod in atom.mFODStruct.mBFODs:

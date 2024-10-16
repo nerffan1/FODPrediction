@@ -1,7 +1,7 @@
-from Molecule import *
+from FODLego.Molecule import *
 from typing import List
-from Bond import Bond
-from FFOD import DFFOD, SFFOD, TFFOD
+from FODLego.Bond import Bond
+from FODLego.FFOD import DFFOD, SFFOD, TFFOD
 import pickle
 
 class MolecularSet:

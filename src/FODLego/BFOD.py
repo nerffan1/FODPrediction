@@ -1,7 +1,7 @@
-from Funcs import *
-from FOD import *
-from ElementaryClasses import *
-from globaldata import *
+from FODLego.Funcs import *
+from FODLego.FOD import *
+from FODLego.ElementaryClasses import *
+from FODLego.globaldata import *
 
 class BFOD(FOD):
     """

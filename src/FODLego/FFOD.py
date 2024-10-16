@@ -1,6 +1,6 @@
-from Funcs import *
-from FOD import *
-from ElementaryClasses import *
+from FODLego.Funcs import *
+from FODLego.FOD import *
+from FODLego.ElementaryClasses import *
 from copy import copy
 
 class FFOD(FOD):
