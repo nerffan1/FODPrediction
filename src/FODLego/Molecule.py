@@ -444,7 +444,7 @@ class Molecule:
                 lines = infile.readlines()
 
                 # Skip the first two lines and get the atom count from the third line
-                atom_count = int(lines[2].strip())
+                atom_count = int(lines[2].split()[0])
                 outfile.write(f"{atom_count}\n\n")  # XYZ format first line (atom count) and an empty comment line
 
                 # Process the remaining lines
