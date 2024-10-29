@@ -448,11 +448,7 @@ class Molecule:
                 outfile.write(f"{atom_count}\n\n")  # XYZ format first line (atom count) and an empty comment line
 
                 # Process the remaining lines
-                for line in lines[3:]:
-                    if len(line.split()) == 2:  # Skip footer if present
-                        continue
-
-                    # Split the line into parts
+                for line in lines[3:3+atom_count]:
                     parts = line.split()
                     x, y, z = parts[:3]  # First three are the coordinates
                     x = float(x)*GlobalData.AU2ANG
