@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "FODLego"
-version = "0.3.10"
+version = "0.3.11"
 authors = [{ name="Angel-Emilio Villegas Sanchez", email="ville2a@cmich.edu" }]
 description = "This package creates initial FODs for molecules with atoms up to the third row in th periodic table."
 readme = "README.md"
@@ -15,7 +15,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = ["numpy", "rdkit", "scipy", "matplotlib"]
-keywords = ["FODs", "FLOSIC", "DFT", "Fermi-Lowdin", "SIE", "SIC", "self-interaction"]
+keywords = ["FODs", "FLOSIC", "DFT", "Fermi-Lowdin", "SIE", "SIC", "self-interaction", "CMU", "FLO"]
 
 [project.urls]
 Homepage = "https://github.com/nerffan1/FODLego"
