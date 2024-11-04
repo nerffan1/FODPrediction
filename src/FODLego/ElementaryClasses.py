@@ -23,16 +23,6 @@ import FODLego.Shells as Shells
 
 class Atom:
     def __init__(self, index: int, Name: str, Pos, owner):
-        #Known Attributes
-        self.mName = Name
-        self.mPos = np.array(Pos) 
-        self.mI = index
-        self.mZ = PT().GetAtomicNumber(Name)
-        self.mPeriod = GlobalData.GetPeriod(self.mZ)
-        self.mGroup = GlobalData.GetRow(self.mZ)
-        self.mValCount = self._FindValence()
-        self.mOwner = owner
-
         #Undetermined Attributes
         self.mSteric = 0
         self.mFreePairs = 0
@@ -41,6 +31,15 @@ class Atom:
         self.mGlobalBonds = []
         self.mFODStruct = FODStructure(self)
         self.mCompleteVal = False
+        #Known Attributes
+        self.mName = Name
+        self.mPos = np.array(Pos)
+        self.mI = index
+        self.mZ = PT().GetAtomicNumber(Name)
+        self.mPeriod = GlobalData.GetPeriod(self.mZ)
+        self.mGroup = GlobalData.GetRow(self.mZ)
+        self.mValCount = self.FindValence()
+        self.mOwner = owner
         
 
     def GetMonoCovalRad(self): 
@@ -144,20 +143,24 @@ class Atom:
         self.mFreePairs = int(GlobalData.mShellCount[self.mPeriod] - bondelec)/2
         self.mSteric = self.mFreePairs + len(self.mBonds)
     
-    def _FindValence(self):
+    def FindValence(self):
         """
         This method finds the number of electrons in the valence shell by finding the 
         difference between the current Group and the last ClosedShell Group. Only works up
         to 5th period.
-        TODO: This can be saved in GlobalData
         """
-        if self.mGroup < 4:
-            return self.mGroup
+        # TODO: Assume in the meantime that bonded atoms have are closed shell
+        if len(self.mBonds) > 0:
+            if self.mGroup < 4:
+                return self.mGroup
+            else:
+                if self.mPeriod < 4:
+                    return (2 + (self.mGroup - 12))
+                elif self.mPeriod < 6:
+                    return (self.mGroup)
         else:
-            if self.mPeriod < 4:
-                return (2 + (self.mGroup - 12))
-            elif self.mPeriod < 6:
-                return (self.mGroup)
+            return 0
+
                     
     def _CheckFullShell(self):
         """
@@ -517,11 +520,13 @@ class FODStructure:
         def AddCoreElectrons():
             #Count core electrons and
             core_elec = self.mAtom.mZ - self.mAtom.mValCount
+            print(core_elec)
             if core_elec != 0:
                 for shell in GlobalData.mGeo_Ladder[core_elec]:
                     if shell == 'point':
                         self._AddCoreShell(Shells.Point(self.mAtom))
                     elif shell == 'tetra':
+                        # TODO: Make the core_amount different per atom period.
                         self._AddCoreShell(Shells.Tetra(self.mAtom, 10))
                     elif shell == 'triaug':
                         pass # For future development: Beyond scope

@@ -107,6 +107,7 @@ class GlobalData:
     #Think of a scheme that places the beginning of a 
     mGeo_Ladder = { 2: ['point'], 
                         4: ['point','point'],
+                        7: ['point','tetra', 'tetra'],
                         10: ['point','tetra'], 
                         18: ['point', 'tetra', 'tetra'],
                         20: ['point', 'tetra', 'triaug_val', 'point'], 

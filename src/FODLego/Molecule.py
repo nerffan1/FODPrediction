@@ -413,7 +413,6 @@ class Molecule:
         for atom in self.mAtoms:
             atom.CalcSteric()
         
-
     def CountFODs(self):
         """
         Returns the amout of FODs in the molecule
@@ -472,7 +471,8 @@ class Molecule:
             self.rdmol = Chem.MolFromXYZFile(file)
             read_xyz()
             rdDetermineBonds.DetermineConnectivity(self.rdmol)
-            rdDetermineBonds.DetermineBondOrders(self.rdmol, charge=self.mQ)
+            if len(self.rdmol.GetBonds()) > 0:
+                rdDetermineBonds.DetermineBondOrders(self.rdmol, charge=self.mQ)
 
         if self.mOgXYZ == None:
             if self.mSrc[-3:] == "pdb":  # WiP. This is a test
