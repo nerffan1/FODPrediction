@@ -1,29 +1,31 @@
 import numpy as np
 from scipy.spatial.distance import cdist
+from FODLego.Shells import FODShell, Tetra
+from numpy.linalg import norm
 
 
-def CreateXYZ_Shells(sh1, sh2) -> None:
+def create_xyz(sh1, sh2=[], file="shells.xyz") -> None:
     """
     Create an XYZ file with
     """
-    with open("shells.xyz",'w') as output:
+    with open(file,'w') as output:
         #First 2 lines
-        output.write(str(len(sh1) + len(sh2)) + '\n')
-        output.write("These are 2 shells\n")
+        output.write(str(len(sh1) + len(sh2)) + '\n\n')
         # Write all atoms
         for fod in sh1:
             atom_coords = ' '.join([f"{x:7.4f}" for x in fod])
             output.write(f"X {atom_coords}\n")
 
-        for fod in sh2:
-            atom_coords = ' '.join([f"{x:7.4f}" for x in fod])
-            output.write(f"He {atom_coords}\n")
+        if sh2 is not None:
+            for fod in sh2:
+                atom_coords = ' '.join([f"{x:7.4f}" for x in fod])
+                output.write(f"He {atom_coords}\n")
 
-def readXYZ(input_file):
-    """
-    Create a relaxed position in which the FODs have a minum of energy,
-    based off an electrostatic potential.
-    """
+def normalize_l(coords):
+    max = np.max(norm(coords, axis=1))
+    return coords/max
+
+def readxyz(input_file):
     with open(input_file, 'r') as infile:
         lines = infile.readlines()
         atoms = int(lines[0])
@@ -34,7 +36,14 @@ def readXYZ(input_file):
             parts = line.split()
             strnum = np.array(parts[1:4])  # First three are the coordinates
             coords[i] = strnum.astype(float)
+    return coords
 
+def read_sp3_sp3d5(input_file):
+    """
+    Create a relaxed position in which the FODs have a minum of energy,
+    based off an electrostatic potential.
+    """
+    coords = readxyz(input_file)
     # Create the shells
     magnitude = np.linalg.norm(coords, axis=1)
     sorted_i = np.argsort(magnitude)
@@ -73,7 +82,7 @@ def electrostatic_potential_energy(coords1, coords2):
 def find_minimum_energy_configuration(coords1, coords2):
     min_energy = float('inf')
     best_coords = None
-    angles = np.linspace(0, 2 * np.pi, 500)
+    angles = np.linspace(0, 2 * np.pi, 150)
     for angle in angles:
         x_rot = rotate(coords2, angle, 'x')
         for angle2 in angles:
@@ -87,7 +96,12 @@ def find_minimum_energy_configuration(coords1, coords2):
                     best_coords = rot_coor
     return best_coords, min_energy
 
-sp3, sp3d5 = readXYZ("test2shellsxyz.xyz")
+sp3, sp3d5 = read_sp3_sp3d5("test2shellsxyz.xyz")
 
-best_coords, min_energy = find_minimum_energy_configuration(sp3, sp3d5)
-CreateXYZ_Shells(sp3, best_coords)
+create_xyz(normalize_l(sp3), file="normalized_4pt.xyz")
+# best_coords, min_energy = find_minimum_energy_configuration(sp3, sp3d5)
+# create_xyz(sp3, best_coords)
+sh1 = readxyz("down_sp3d5.xyz")
+sh2 = readxyz("up_sp3d4.xyz")
+best_coords, min_energy = find_minimum_energy_configuration(sh1,sh2)
+create_xyz(sh1, best_coords, "updown_ion.xyz")
