@@ -12,7 +12,7 @@ from scipy.spatial import distance
 # Others
 from os import remove
 import logging
-logging.basicConfig(format="%(levelname)s:%(filename)s:%(funcName)s(): %(message)s")
+logger = logging.getLogger(__name__)
 
 # Custom Made library
 from FODLego.globaldata import GlobalData
@@ -202,13 +202,12 @@ class Molecule:
 
     # Getters
     def GeFBEdges(self):
-        import logging
         for at in self.mAtoms:
             edges = at.GetAssocEdges_B_F_FOD()
             if len(edges) > 0:
-                logging.info(edges)
+                logger.info(edges)
             else:
-                logging.info("No edges found")
+                logger.info("No edges found")
 
     def get_ffod(self, type):
         return [f for f in self.mFFODs if isinstance(f,type)]
@@ -389,6 +388,10 @@ class Molecule:
             self.mBonds.append(newbond)
             Atom1.AddBond(Atom2, order)
             Atom2.AddBond(Atom1, order)
+        
+        # Find out valence of atoms after connectivity
+        for at in self.mAtoms:
+            at.mValCount = at.FindValence()
 
     def _CheckChemValency(self) -> None:
         """
@@ -397,7 +400,7 @@ class Molecule:
         """
         for atom in self.rdmol.GetAtoms():
             if atom.GetTotalValence() > 4 and self.mValidStruct == True:
-                logging.warning(f"Non simple bonding at {atom.GetSymbol()} in {self.mSrc}. Valency above 4.")
+                logger.warning(f"Non simple bonding at {atom.GetSymbol()} in {self.mSrc}. Valency above 4.")
                 self.mValidStruct = False
 
     def _CheckRadicals(self):
@@ -482,8 +485,8 @@ class Molecule:
             elif self.mSrc[-3:] == "xyz":
                 create_xyz(self.mSrc)
 
-            elif self.mSrc == "CLUSTER":
-                # Turn CLUSTER into an .xyz file
+            elif self.mSrc[-7:] == "CLUSTER":
+                # Turn CLUSTER into an .xyz file  
                 CLUST2XYZ(self.mSrc, "CLUST.xyz")
                 create_xyz("CLUST.xyz")
                 remove("CLUST.xyz")

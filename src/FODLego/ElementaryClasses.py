@@ -5,7 +5,8 @@
 #  -  Add Tetrahedra class and several attributes/methods to manipulate them
 #  - In far future, somehow implement the triaugmented triangular prism that corresponds to sp3d5 ( 9 FODs, 18 electrons) 
 #Author: Angel-Emilio Villegas S.
-from  .globaldata import GlobalData
+import logging
+logger = logging.getLogger(__name__)
 import numpy as np
 from numpy import sqrt
 from numpy.linalg import norm
@@ -18,6 +19,7 @@ from rdkit.Chem import GetPeriodicTable as PT
 from FODLego.Bond import *
 from FODLego.FOD import *
 import FODLego.Shells as Shells
+from  .globaldata import GlobalData
 
 ################# FOD STRUCTURE #################
 
@@ -38,7 +40,7 @@ class Atom:
         self.mZ = PT().GetAtomicNumber(Name)
         self.mPeriod = GlobalData.GetPeriod(self.mZ)
         self.mGroup = GlobalData.GetRow(self.mZ)
-        self.mValCount = self.FindValence()
+        self.mValCount = 0
         self.mOwner = owner
         
 
@@ -520,12 +522,15 @@ class FODStructure:
         def AddCoreElectrons():
             #Count core electrons and
             core_elec = self.mAtom.mZ - self.mAtom.mValCount
-            print(core_elec)
+            logger.debug(f"\n Atom: {self.mAtom.mName}\n Core electrons: {core_elec}")
             if core_elec != 0:
                 for shell in GlobalData.mGeo_Ladder[core_elec]:
                     if shell == 'point':
                         self._AddCoreShell(Shells.Point(self.mAtom))
-                    elif shell == 'tetra':
+                    elif shell == 'a_tetra':
+                        # TODO: Make the core_amount different per atom period.
+                        self._AddCoreShell(Shells.Tetra(self.mAtom, 10))
+                    elif shell == 'b_tetra':
                         # TODO: Make the core_amount different per atom period.
                         self._AddCoreShell(Shells.Tetra(self.mAtom, 10))
                     elif shell == 'triaug':

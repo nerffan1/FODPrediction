@@ -6,7 +6,7 @@ from .Molecule import Molecule
 from FODLego.graphing import *
 import sys
 import logging
-logging.basicConfig(format="%(levelname)s:%(filename)s:%(funcName)s(): %(message)s")
+logging.basicConfig(format="%(levelname)s:%(filename)s:%(funcName)s(): %(message)s", level=logging.DEBUG)
 
 def main():
     if len(sys.argv) == 1:
@@ -46,3 +46,4 @@ def main():
             mol = Molecule(sys.argv[1], sys.argv[2])
             mol.CreateCompXYZ()
             #mol.GeFBEdges()
+main()
