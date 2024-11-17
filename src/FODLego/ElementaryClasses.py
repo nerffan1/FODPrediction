@@ -268,7 +268,7 @@ class FODStructure:
                 else:
                     self.mfods = np.vstack((self.mfods,fod))
 
-    def _AddCoreShell(self, shell, ch=0):
+    def _AddCoreShell(self, shell):
         """
         This function adds the Shell object to the FODStructure object
         and it also adds the FODs of that Shell object to the mCore of 
@@ -277,6 +277,8 @@ class FODStructure:
        Args:
             shell: The Shell object that will be added to the FOD 
             Structure.
+            ch: Boolean representing the alpha/beta (up/down) channels 
+            of the electrons. True for Alpha, False for Beta.
         """
         self.mCoreShells.append(shell)
         # Add individual FODs to the electronic structure
@@ -541,10 +543,12 @@ class FODStructure:
                 for shell in GlobalData.mGeo_Ladder[core_elec]:
                     if shell == 'a_point':
                         self._AddCoreShell(Shells.Point(self.mAtom))
+                    elif shell == 'b_point':
+                        self._AddCoreShell(Shells.Point(self.mAtom, False))
                     elif shell == 'a_tetra':
                         self._AddCoreShell(Shells.Tetra(self.mAtom, 10))
                     elif shell == 'b_tetra':
-                        self._AddCoreShell(Shells.Tetra(self.mAtom, 10))
+                        self._AddCoreShell(Shells.Tetra(self.mAtom, 10, False))
                     elif shell == 'triaug':
                         pass # For future development: Beyond scope
 

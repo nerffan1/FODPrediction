@@ -3,10 +3,11 @@ from typing import List
 from numpy.linalg import norm
 
 class FOD:
-    def __init__(self, pos: np.ndarray = np.zeros(3)) -> None:
+    def __init__(self, pos: np.ndarray = np.zeros(3), ch=True) -> None:
         self.mPos = pos
         self.mSiblings = ()
         self.mAssocFOD: FOD = []
+        self.mChannel = ch
 
     def AddSibling(self, *siblings):
         """
