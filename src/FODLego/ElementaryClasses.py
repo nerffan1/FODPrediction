@@ -268,7 +268,16 @@ class FODStructure:
                 else:
                     self.mfods = np.vstack((self.mfods,fod))
 
-    def _AddCoreShell(self, shell):
+    def _AddCoreShell(self, shell, ch=0):
+        """
+        This function adds the Shell object to the FODStructure object
+        and it also adds the FODs of that Shell object to the mCore of 
+        the FODStructure.
+
+       Args:
+            shell: The Shell object that will be added to the FOD 
+            Structure.
+        """
         self.mCoreShells.append(shell)
         # Add individual FODs to the electronic structure
         for fod in shell.mfods:
@@ -277,18 +286,23 @@ class FODStructure:
 
     def PrepareShells(self, atoms: List[Atom]):
         """
-        This function will determine the creation of Core FODs, those that are not 
-        related to bonding. 
-        Comment: The scheme is easy in the first 3 periods of the Periodic
-        Table, but it will become trickier ahead if Hybridization heuristics don't work.
-        Currently it only works for closed shell calculations (V 0.1).
-        TODO: This will assume that we are doing up to the n=3 shell, with sp3 hybridization
-        TODO: Take into account free pairs of electrons
-        TODO: For mOrder=2, there are many schemes to determine direction
-        TODO: Find an elegant solution to do exceptions for H bonds
-        TODO: Account previous bonds formed, by talling previous FODs, or looking back at mBonds 
-        TODO: GlobalData.GetFullElecCount() Can be precalculated ahead of time and placed as a member vatrable
+        This function will determine the creation of Core FODs, those 
+        that are not related to bonding. The scheme is easy in the first
+        3 periods of the Periodic Table, but it will become trickier 
+        ahead if Hybridization heuristics don't work. Currently it only 
+        works for closed shell calculations (V 0.1).
         """
+        # TODO: This will assume that we are doing up to the n=3 shell,
+        #  with sp3 hybridization
+        # TODO: Take into account free pairs of electrons
+        # TODO: For mOrder=2, there are many schemes to determine
+        #  direction
+        # TODO: Find an elegant solution to do exceptions for H bonds
+        # TODO: Account previous bonds formed, by talling previous FODs,
+        #  or looking back at mBonds 
+        # TODO: GlobalData.GetFullElecCount() Can be precalculated ahead
+        #  of time and placed as a member vatrable
+
         #Lazy loading in order to 
         from FODLego.BFOD import SBFOD, DBFOD, TBFOD
        
