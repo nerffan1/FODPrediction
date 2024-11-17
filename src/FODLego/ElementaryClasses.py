@@ -539,13 +539,11 @@ class FODStructure:
             logger.debug(f"\n Atom: {self.mAtom.mName}\n Core electrons: {core_elec}")
             if core_elec != 0:
                 for shell in GlobalData.mGeo_Ladder[core_elec]:
-                    if shell == 'point':
+                    if shell == 'a_point':
                         self._AddCoreShell(Shells.Point(self.mAtom))
                     elif shell == 'a_tetra':
-                        # TODO: Make the core_amount different per atom period.
                         self._AddCoreShell(Shells.Tetra(self.mAtom, 10))
                     elif shell == 'b_tetra':
-                        # TODO: Make the core_amount different per atom period.
                         self._AddCoreShell(Shells.Tetra(self.mAtom, 10))
                     elif shell == 'triaug':
                         pass # For future development: Beyond scope
